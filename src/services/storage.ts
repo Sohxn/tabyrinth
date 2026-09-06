@@ -46,6 +46,7 @@ export const StorageService = {
         await this.set({
             nodes: updatedNodes, 
             rootIDs: updatedRoots
+
         });
     },
 

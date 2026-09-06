@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   modules: ['@wxt-dev/module-react'],
   manifest: {
-    name: 'Tabex',
+    name: 'Tabyrinth',
     description: 'Vertical tabs but better',
     version: '1.0.0',
     permissions: ['tabs', 'storage', 'sidePanel'],
