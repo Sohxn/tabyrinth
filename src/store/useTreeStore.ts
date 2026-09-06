@@ -3,19 +3,19 @@ import { StorageService } from '../services/storage';
 import { type TabNode, type TreeStorageSchema } from '../types';
 
 interface TreeStoreState {
-    nodes: Record<number, TabNode>;
-    rootIDs: number[];
+    nodes: Record<string | number, TabNode>;
+    rootIDs: (string | number)[];
     lastActiveTabID: number | null;
     isPro: boolean;
-    expandedNodeIDs: Record<number, boolean>;
+    expandedNodeIDs: Record<string | number, boolean>;
     searchQuery: string;
 
     init: () => Promise<void>;
     syncFromStorage: (schema: TreeStorageSchema) => void;
-    toggleExpand: (nodeID: number) => void;
+    toggleExpand: (nodeID:string | number) => void;
     setSearchQuery: (query: string) => void;
-    focusTab: (tabID: number) => Promise<void>;
-    closeTab: (tabID: number) => Promise<void>;
+    focusTab: (tabID: string | number) => Promise<void>;
+    closeTab: (tabID: string | number) => Promise<void>;
 }
 
 export const useTreeStore = create<TreeStoreState>()((set, get) => ({
@@ -69,7 +69,7 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
     // switch tabs according to where the user clicks on the sidepanel
     focusTab: async(tabID) =>  {
         const node = get().nodes[tabID];
-        if(!node || node.isClosed) return;
+        if(!node || node.isClosed || typeof(tabID) == 'string') return;
 
         try{
             await chrome.tabs.update(tabID, {active: true});
@@ -80,8 +80,14 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
     },
 
     closeTab: async(tabID) => {
+        const numericID = typeof tabID === 'number' ? tabID : parseInt(tabID, 10);
+        if(isNaN(numericID)){
+            await StorageService.markNodeClosed(tabID);
+            return;
+        }
+        
         try{
-            await chrome.tabs.remove(tabID);
+            await chrome.tabs.remove(numericID);
         }catch(err){
             console.error("[LOG] failed to close tab: ", err);
             await StorageService.markNodeClosed(tabID);
