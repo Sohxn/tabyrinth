@@ -31,13 +31,14 @@ export default function App() {
     <div className="flex flex-col h-screen w-full bg-[#000000] text-[#e3e1e5] p-2 text-xs select-none">
 
       {/* header */}
-      <div className="flex items-center justify-between mb-2 px-2 py-2">
-        <span className="font-bold text-lg tracking-wide text-gray-200">Tabyrinth</span>
+      <div className="flex items-center justify-between mb-2 px-2 py-2 grid grid-cols-8 gap-2">
+        <span className="font-bold col-span-2 text-lg tracking-wide text-gray-200 font-bold">Tabyrinth</span>
 
-        <div className='flex rounded-full h-10 mx-4 w-full border-[1.5px] bg-white'></div>
-        <span className="text-[12px] text-gray-400 bg-[#000000] px-2 py-1 mt-1 rounded-full border-2 border-[#3b3244]">
-          {activeCount} {activeCount > 1 ? (<span>tabs</span>) : (<span>tab</span>)} active
-        </span>
+        <div className='flex col-span-4 rounded-3xl h-10 mx-2 w-full border-[1.5px] bg-white'></div>
+        
+        <div className="flex col-span-2 text-[12px] text-gray-400 bg-[#000000] py-2 mt-1 ml-4 rounded-full border-2 border-[#3b3244] justify-center items-center">
+          {`${activeCount} ${activeCount === 1 ? 'tab' : 'tabs'}`}
+        </div>
       </div>
 
       {/* tree */}
