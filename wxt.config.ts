@@ -12,6 +12,9 @@ export default defineConfig({
     side_panel: {
       default_path: 'sidepanel.html'
     },
+    runner: {
+      startUrls: ['https://www.google.com'],
+    }
   },
   vite: () => ({
     plugins: [tailwindcss()],

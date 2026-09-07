@@ -1,86 +1,158 @@
 import { type TreeStorageSchema, type TabNode } from "../types";
 
-//     nodes: Record<number, TabNode>;
-//     rootIDs: number[];
-//     lastActiveTabID: number | null;
-//     isPro: boolean;
-
 const InitState: TreeStorageSchema = {
-    nodes: {},
-    rootIDs: [],
-    lastActiveTabID: null,
-    isPro: false
+  nodes: {},
+  rootIDs: [],
+  lastActiveTabID: null,
+  isPro: false,
 };
 
-// mutex queue to handle race conditions
 let storageQueue: Promise<any> = Promise.resolve();
-const  enqueue = <T>(task: () => Promise<T>): Promise<T> => {
-    return new Promise((resolve, reject) => {
-        storageQueue = storageQueue.then(task).then(resolve).catch(reject);
-    });
+
+const enqueue = <T>(task: () => Promise<T>): Promise<T> => {
+  return new Promise((resolve, reject) => {
+    storageQueue = storageQueue.then(task).then(resolve).catch(reject);
+  });
 };
+
+
+function sanitizeTree(nodes: Record<string | number, TabNode>): {
+  nodes: Record<string | number, TabNode>;
+  rootIDs: (string | number)[];
+} {
+  const cleanedNodes: Record<string | number, TabNode> = {};
+
+  Object.values(nodes).forEach((node) => {
+    const hasParent = node.parentID !== null && node.parentID !== undefined;
+    const parentExists = hasParent && !!nodes[node.parentID as string | number];
+
+    cleanedNodes[node.id] = {
+      ...node,
+      parentID: parentExists ? node.parentID : null,
+      childrenIDs: node.childrenIDs ? [...node.childrenIDs] : [],
+    };
+  });
+
+  const rootIDs: (string | number)[] = [];
+  Object.values(cleanedNodes).forEach((node) => {
+    if (node.parentID === null) {
+      rootIDs.push(node.id);
+    }
+  });
+
+
+  Object.values(cleanedNodes).forEach((node) => {
+    const validChildIDs = Array.from(new Set(node.childrenIDs)).filter(
+      (childID) =>
+        !!cleanedNodes[childID] && cleanedNodes[childID].parentID === node.id
+    );
+    cleanedNodes[node.id] = { ...node, childrenIDs: validChildIDs };
+  });
+
+  return { nodes: cleanedNodes, rootIDs };
+}
 
 export const StorageService = {
-    async get(): Promise<TreeStorageSchema> {
-        const data = await chrome.storage.local.get('tabTreeData');
-        return (data.tabTreeData as TreeStorageSchema) || InitState;
-    },
 
-    async set(patch: Partial<TreeStorageSchema>): Promise<void> {
-        return enqueue(async () => {
-            const data = await chrome.storage.local.get('tabTreeData');
-            const current = (data.tabTreeData as TreeStorageSchema) || InitState;
-            await chrome.storage.local.set({
-                tabTreeData: {...current, ...patch},
-            });
-        });
-    },
+  async transaction(
+    fn: (state: TreeStorageSchema) => Partial<TreeStorageSchema> | Promise<Partial<TreeStorageSchema>>
+  ): Promise<void> {
+    return enqueue(async () => {
+      const data = await chrome.storage.local.get('tabTreeData');
+      const state = (data.tabTreeData as TreeStorageSchema) || InitState;
 
-    async upsertNode(node: TabNode): Promise<void> {
-        return enqueue(async () => {
-            const data = await chrome.storage.local.get("tabTreeData");
-            const state = (data.tabTreeData as TreeStorageSchema) || InitState;
-            const updatedNodes = { ...state.nodes, [node.id]: node };
-            const updatedRoots = [...state.rootIDs];
-            const parent = node.parentID != null ? updatedNodes[node.parentID] : undefined;
+      const patch = await fn(state);
+      const mergedNodes = patch.nodes ? { ...state.nodes, ...patch.nodes } : state.nodes;
+      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots } = sanitizeTree(mergedNodes);
 
-            if (parent) {
-                if (!parent.childrenIDs.includes(node.id)) {
-                    updatedNodes[parent.id] = {
-                        ...parent,
-                        childrenIDs: [...parent.childrenIDs, node.id],
-                    };
-                }
-            } else if (!node.parentID && !updatedRoots.includes(node.id)) {
-                updatedRoots.push(node.id);
-            }
+      await chrome.storage.local.set({
+        tabTreeData: { ...state, ...patch, nodes: sanitizedNodes, rootIDs: sanitizedRoots }
+      });
+    });
+  },
 
-            await chrome.storage.local.set({
-                tabTreeData: { ...state, nodes: updatedNodes, rootIDs: updatedRoots },
-            });
-        });
-    },
+  async get(): Promise<TreeStorageSchema> {
+    const data = await chrome.storage.local.get('tabTreeData');
+    return (data.tabTreeData as TreeStorageSchema) || InitState;
+  },
 
-    async markNodeClosed(tabID: string | number): Promise<void> {
-        return enqueue(async () => {
-            const data = await chrome.storage.local.get("tabTreeData");
-            const state = (data.tabTreeData as TreeStorageSchema) || InitState;
+  async set(patch: Partial<TreeStorageSchema>): Promise<void> {
+    return enqueue(async () => {
+      const data = await chrome.storage.local.get('tabTreeData');
+      const current = (data.tabTreeData as TreeStorageSchema) || InitState;
 
-            const target = state.nodes[tabID];
-            if (!target) return;
+      // Actually merge, don't replace — a partial nodes patch should not
+      // wipe out every tab that wasn't included in it.
+      const mergedNodes = patch.nodes
+        ? { ...current.nodes, ...patch.nodes }
+        : current.nodes;
+      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots } = sanitizeTree(mergedNodes);
 
-            const updatedNodes = {
-                ...state.nodes,
-                [tabID]: {
-                    ...target,
-                    isClosed: true,
-                    closedAt: Date.now(),
-                },
-            };
+      await chrome.storage.local.set({
+        tabTreeData: {
+          ...current,
+          ...patch,
+          nodes: sanitizedNodes,
+          rootIDs: sanitizedRoots,
+        },
+      });
+    });
+  },
 
-            await chrome.storage.local.set({
-                tabTreeData: { ...state, nodes: updatedNodes },
-            });
-        });
-    }
+  async upsertNode(node: TabNode): Promise<void> {
+    return enqueue(async () => {
+      const data = await chrome.storage.local.get("tabTreeData");
+      const state = (data.tabTreeData as TreeStorageSchema) || InitState;
+
+      const updatedNodes: Record<string | number, TabNode> = {
+        ...state.nodes,
+        [node.id]: { ...node, childrenIDs: node.childrenIDs ?? [] },
+      };
+
+      if (node.parentID !== null && node.parentID !== undefined) {
+        const parent = updatedNodes[node.parentID];
+        if (parent && !parent.childrenIDs.includes(node.id)) {
+          updatedNodes[parent.id] = {
+            ...parent,
+            childrenIDs: [...parent.childrenIDs, node.id],
+          };
+        }
+      }
+
+      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots } = sanitizeTree(updatedNodes);
+
+      await chrome.storage.local.set({
+        tabTreeData: { ...state, nodes: sanitizedNodes, rootIDs: sanitizedRoots },
+      });
+    });
+  },
+
+  async markNodeClosed(tabID: string | number): Promise<void> {
+    return enqueue(async () => {
+      const data = await chrome.storage.local.get("tabTreeData");
+      const state = (data.tabTreeData as TreeStorageSchema) || InitState;
+
+      const target = state.nodes[tabID];
+      if (!target) return;
+
+      const updatedNodes = {
+        ...state.nodes,
+        [tabID]: {
+          ...target,
+          isClosed: true,
+          closedAt: Date.now(),
+        },
+      };
+
+      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots } = sanitizeTree(updatedNodes);
+
+      await chrome.storage.local.set({
+        tabTreeData: { ...state, nodes: sanitizedNodes, rootIDs: sanitizedRoots },
+      });
+    });
+  },
+
+  async clearAll(): Promise<void> {
+    await chrome.storage.local.remove('tabTreeData');
+  },
 };

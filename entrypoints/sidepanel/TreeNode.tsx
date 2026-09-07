@@ -1,5 +1,5 @@
 import React from 'react';
-import { useTreeStore } from '@/src/store/useTreeStore';
+import { useTreeStore } from '../../src/store/useTreeStore';
 
 interface TreeNodeProps {
     nodeID: string | number;
@@ -21,7 +21,8 @@ export function TreeNode({nodeID, depth}: TreeNodeProps) {
     const hasChildren = node.childrenIDs && node.childrenIDs.length > 0;
     const isActive = lastActiveTabID == node.id;
 
-    <div className="flex flex-col w-full">
+    return(
+      <div className="flex flex-col w-full">
       <div
         onClick={() => focusTab(node.id)}
         style={{ paddingLeft: `${depth * 14 + 8}px` }}
@@ -81,4 +82,6 @@ export function TreeNode({nodeID, depth}: TreeNodeProps) {
         </div>
       )}
     </div>
+    )
+    
 }
