@@ -14,6 +14,12 @@ export default defineBackground(() => {
   }).catch(console.error);
 
   const syncExistingTabs = async () => {
+
+    // on startup
+    // if set to 'dont retain tab tree'
+    await StorageService.clearAll();
+    await StorageService.resetToActiveTabsOnly();
+
     const tabs = await chrome.tabs.query({});
     for (const tab of tabs) {
       if(!tab.id) continue;
@@ -30,6 +36,7 @@ export default defineBackground(() => {
       await StorageService.upsertNode(tabNode);
     }
   };
+  // sync tabs with the storage
   syncExistingTabs();
 
   // activation
@@ -143,6 +150,17 @@ export default defineBackground(() => {
 
   // tab close / removal
   chrome.tabs.onRemoved.addListener(async (tabID) => {
-    await StorageService.markNodeClosed(tabID);
+    const state = await StorageService.get();
+    const node = state.nodes[tabID];
+    if(!node) return;
+
+    const isPlaceholderTab = !node.url || node.url.includes('chrome://newtab') || node.url.includes('about:blank');
+    const hasNoChildren = !node.childrenIDs || node.childrenIDs.length === 0;
+
+    if(isPlaceholderTab && hasNoChildren){
+      await StorageService.deleteNode(tabID);
+    }else{
+      await StorageService.markNodeClosed(tabID);
+    }
   });
 });

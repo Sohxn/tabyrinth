@@ -189,8 +189,89 @@ export const StorageService = {
           rootIDs: sanitizedRoots
         }
       });
+    });
+  },
 
-      
+
+  // delete node entirely 
+  async deleteNode(nodeId: string | number): Promise<void> {
+    return enqueue(async () => {
+      const data = await chrome.storage.local.get("tabTreeData");
+      const state = (data.tabTreeData as TreeStorageSchema) || InitState;
+
+      if (!state.nodes[nodeId]) return;
+
+      delete state.nodes[nodeId];
+
+      // Detach from parent node
+      Object.values(state.nodes).forEach((n) => {
+        n.childrenIDs = n.childrenIDs.filter((id) => id !== nodeId);
+      });
+
+      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots } = sanitizeTree(state.nodes);
+
+      await chrome.storage.local.set({
+        tabTreeData: {
+          ...state,
+          nodes: sanitizedNodes,
+          rootIDs: sanitizedRoots,
+        },
+      });
+    });
+  },
+
+  async reopenNode(nodeId: string | number): Promise<void> {
+    return enqueue(async () => {
+      const data = await chrome.storage.local.get("tabTreeData");
+      const state = (data.tabTreeData as TreeStorageSchema) || InitState;
+      const oldNode = state.nodes[nodeId];
+
+      if (!oldNode) return;
+
+      //spawn a new browser tab with the node's saved URL
+      const newTab = await chrome.tabs.create({ url: oldNode.url, active: true });
+      if (!newTab.id) return;
+
+      //remove old closed ID key
+      delete state.nodes[nodeId];
+
+      //create updated node under new Chrome Tab ID
+      const revivedNode: TabNode = {
+        ...oldNode,
+        id: newTab.id,
+        windowID: newTab.windowId,
+        isClosed: false,
+      };
+
+      state.nodes[newTab.id] = revivedNode;
+
+      //update parent references to point to the new ID
+      if (revivedNode.parentID !== null && state.nodes[revivedNode.parentID]) {
+        const parent = state.nodes[revivedNode.parentID];
+        if(parent){
+          parent.childrenIDs = parent.childrenIDs.map((id) => (id === nodeId ? newTab.id! : id));
+        }
+      }
+
+      //update children pointers to point to the new parent ID
+      revivedNode.childrenIDs.forEach((childId) => {
+        if (state.nodes[childId]) {
+          state.nodes[childId].parentID = newTab.id!;
+        }
+      });
+
+      //Update root list if it was a root
+      state.rootIDs = state.rootIDs.map((id) => (id === nodeId ? newTab.id! : id));
+
+      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots } = sanitizeTree(state.nodes);
+
+      await chrome.storage.local.set({
+        tabTreeData: {
+          ...state,
+          nodes: sanitizedNodes,
+          rootIDs: sanitizedRoots,
+        },
+      });
     });
   },
 };

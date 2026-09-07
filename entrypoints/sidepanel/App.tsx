@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useTreeStore } from '../../src/store/useTreeStore';
 import { TreeNode } from './TreeNode';
 import { type TreeStorageSchema } from '@/src/types';
+import { StorageService } from '@/src/services/storage';
 
 export default function App() {
   const { rootIDs, init, syncFromStorage, nodes } = useTreeStore();
@@ -21,14 +22,21 @@ export default function App() {
 
   const activeCount = Object.values(nodes).filter((n) => !n.isClosed).length;
 
+  // reset button function
+  const resetTree = async () => {
+    await StorageService.resetToActiveTabsOnly();
+  }
+
   return (
     <div className="flex flex-col h-screen w-full bg-[#000000] text-[#e3e1e5] p-2 text-xs select-none">
 
       {/* header */}
       <div className="flex items-center justify-between mb-2 px-2 py-2">
         <span className="font-bold text-lg tracking-wide text-gray-200">Tabyrinth</span>
+
+        <div className='flex rounded-full h-10 mx-4 w-full border-[1.5px] bg-white'></div>
         <span className="text-[12px] text-gray-400 bg-[#000000] px-2 py-1 mt-1 rounded-full border-2 border-[#3b3244]">
-          {activeCount} tabs active
+          {activeCount} {activeCount > 1 ? (<span>tabs</span>) : (<span>tab</span>)} active
         </span>
       </div>
 
@@ -39,6 +47,25 @@ export default function App() {
         ) : (
           rootIDs.map((rootID) => <TreeNode key={rootID} nodeID={rootID} depth={0} />)
         )}
+      </div>
+
+      {/* footer */}
+      <div className='absolute bottom-3 left-3 right-3 grid grid-cols-6 gap-4 items-center justify-center bg-transparent'>
+        {/* search bar */}
+        <div className='rounded-full border-[2px] border-white h-12 my-2 py-2 justify-center items-center grid grid-cols-4 col-span-4'>
+          <div className='col-span-1 ml-4'>search icon</div>
+          <div className='col-span-3 mr-4'>search areaaaaaa</div>
+        </div>
+
+        {/* clear tree button */}
+        <button onClick={resetTree} className='rounded-full border-[2px] border-white h-12 justify-center items-center'>
+          <span className='text-[15px] font-bold'>reset</span>
+        </button>
+
+        {/* settings button */}
+        <div className='rounded-full border-[2px] border-white h-12 justify-center items-center'>
+
+        </div>
       </div>
     </div>
   );

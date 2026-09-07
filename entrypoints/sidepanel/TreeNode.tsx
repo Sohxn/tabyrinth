@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTreeStore } from '../../src/store/useTreeStore';
+import { StorageService } from '@/src/services/storage';
 
 interface TreeNodeProps {
     nodeID: string | number;
@@ -21,25 +22,37 @@ export function TreeNode({nodeID, depth}: TreeNodeProps) {
     const hasChildren = node.childrenIDs && node.childrenIDs.length > 0;
     const isActive = lastActiveTabID == node.id;
 
+    // reopen closed tabs (history)
+    const handleTabClick = async (e: React.MouseEvent) => {
+      e.stopPropagation();
+
+      if(node.isClosed){
+        await StorageService.reopenNode(node.id);
+      }else{
+        await chrome.tabs.update(Number(node.id), { active: true });
+        await chrome.windows.update(node.windowID, { focused: true });
+      }
+    }
+
     return(
-      <div className="flex flex-col w-full">
-      <div
-        onClick={() => focusTab(node.id)}
-        style={{ paddingLeft: `${depth * 14 + 8}px` }}
-        className={`group relative flex items-center h-8 pr-2 my-[1px] rounded-md text-xs cursor-pointer transition-colors ${
-          isActive
-            ? 'bg-[#3b2d48] text-white font-medium'
-            : node.isClosed
-            ? 'bg-transparent text-gray-500 opacity-50'
-            : 'text-[#e3e1e5] hover:bg-[#2b2432]'
-        }`}
-      >
+      <div className="relative flex-col w-full">
         {depth > 0 && (
           <div
             className="absolute top-0 bottom-0 border-l border-[#362e3d]"
             style={{ left: `${depth * 14 - 2}px` }}
           />
         )}
+      <div
+        onClick={handleTabClick}
+        style={{ paddingLeft: `${depth * 14 + 8}px` }}
+        className={`group relative flex items-center h-10 pr-2 my-[1px] rounded-2xl text-xs cursor-pointer transition-colors ${
+          isActive
+            ? 'bg-[#375d6b] text-white font-medium'
+            : node.isClosed
+            ? 'bg-transparent text-gray-500 opacity-50'
+            : 'text-[#e3e1e5] hover:bg-[#3b3b3b]'
+        }`}
+      >
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -60,7 +73,7 @@ export function TreeNode({nodeID, depth}: TreeNodeProps) {
         ) : (
           <div className="w-4 h-4 rounded-sm bg-gray-600 mr-2 flex-shrink-0" />
         )}
-        <span className={`truncate flex-1 ${node.isClosed ? 'line-through text-gray-500' : ''}`}>
+        <span className={`truncate flex-1 ${node.isClosed ? 'text-gray-200' : ''}`}>
           {node.title || 'New Tab'}
         </span>
         {!node.isClosed && (
