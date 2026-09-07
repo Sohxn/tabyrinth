@@ -4,6 +4,7 @@ const InitState: TreeStorageSchema = {
   nodes: {},
   rootIDs: [],
   lastActiveTabID: null,
+  activeMediaTabID: null,
   isPro: false,
 };
 
@@ -151,10 +152,6 @@ export const StorageService = {
     });
   },
 
-  async clearAll(): Promise<void> {
-    await chrome.storage.local.remove('tabTreeData');
-  },
-
   // reset all closed / stale nodes and keep only the active tabs
   async resetToActiveTabsOnly(): Promise<void> {
     return enqueue(async () => {
@@ -249,7 +246,7 @@ export const StorageService = {
       if (revivedNode.parentID !== null && state.nodes[revivedNode.parentID]) {
         const parent = state.nodes[revivedNode.parentID];
         if(parent){
-          parent.childrenIDs = parent.childrenIDs.map((id) => (id === nodeId ? newTab.id! : id));
+          parent.childrenIDs = parent.childrenIDs.map((id) => String(id) === String(nodeId) ? newTab.id! : id);
         }
       }
 
@@ -272,6 +269,20 @@ export const StorageService = {
           rootIDs: sanitizedRoots,
         },
       });
+    });
+  },
+
+  async setActiveMediaTab(tabID: string | number | null): Promise<void> {
+    await this.transaction((state) => ({
+        activeMediaTabID: tabID,
+    }));
+  },
+
+
+  // clear tab tree
+  async clearAll(): Promise<void> {
+    return enqueue(async () => {
+      await chrome.storage.local.remove('tabTreeData');
     });
   },
 };

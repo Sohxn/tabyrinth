@@ -16,6 +16,7 @@ export interface TreeStorageSchema{
     nodes: Record<string | number, TabNode>;
     rootIDs: (string | number)[];
     lastActiveTabID: number | null;
+    activeMediaTabID: string | number | null;
     // subscription status (preferibly use in another type for user)
     isPro: boolean;
 }

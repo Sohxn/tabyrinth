@@ -163,4 +163,31 @@ export default defineBackground(() => {
       await StorageService.markNodeClosed(tabID);
     }
   });
+
+  // detect background audio 
+  chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.audible !== undefined) {
+    const state = await StorageService.get();
+
+    if (changeInfo.audible) {
+      // Pin this newly playing tab as the active media tab
+      await StorageService.setActiveMediaTab(tabId);
+    } else if (state.activeMediaTabID === tabId) {
+      // Tab went silent: Check if any other tab is playing audio
+      const audibleTabs = await chrome.tabs.query({ audible: true });
+      const nextTabId = audibleTabs.length > 0 ? audibleTabs[0].id ?? null : null;
+      await StorageService.setActiveMediaTab(nextTabId);
+    }
+  }
+});
+
+  // Clear pinned tab if it gets closed
+  chrome.tabs.onRemoved.addListener(async (tabId) => {
+    const state = await StorageService.get();
+    if (state.activeMediaTabID === tabId) {
+      const audibleTabs = await chrome.tabs.query({ audible: true });
+      const nextTabId = audibleTabs.length > 0 ? audibleTabs[0].id ?? null : null;
+      await StorageService.setActiveMediaTab(nextTabId);
+    }
+  });
 });

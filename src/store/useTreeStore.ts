@@ -10,12 +10,17 @@ interface TreeStoreState {
     expandedNodeIDs: Record<string | number, boolean>;
     searchQuery: string;
 
+    // secondary
+    activeMediaTabID: string | number | null;
+
     init: () => Promise<void>;
     syncFromStorage: (schema: TreeStorageSchema) => void;
     toggleExpand: (nodeID:string | number) => void;
     setSearchQuery: (query: string) => void;
     focusTab: (tabID: string | number) => Promise<void>;
     closeTab: (tabID: string | number) => Promise<void>;
+    setActiveMediaTabID: (nodeID: string | number | null) => void;
+    focusMediaTab: () => Promise<void>;
 }
 
 export const useTreeStore = create<TreeStoreState>()((set, get) => ({
@@ -25,6 +30,7 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
     isPro: false,
     expandedNodeIDs: {},
     searchQuery: '',
+    activeMediaTabID: null,
 
     init: async() => {
         const data = await StorageService.get();
@@ -35,7 +41,8 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
         set((state) => {
             // auto expand newly discovered parent nodes
             const nextExpanded = {...state.expandedNodeIDs};
-            Object.values(schema.nodes).forEach((node) => {
+            // added a safe fallback with {}
+            Object.values(schema.nodes || {}).forEach((node) => {
                 if(node.childrenIDs.length > 0 && nextExpanded[node.id] === undefined){
                     nextExpanded[node.id] = true;
                 }
@@ -47,6 +54,7 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
                 lastActiveTabID: schema.lastActiveTabID,
                 isPro: schema.isPro,
                 expandedNodeIDs: nextExpanded,
+                activeMediaTabID: schema.activeMediaTabID ?? null,
             }
         })
     },
@@ -92,5 +100,16 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
             console.error("[LOG] failed to close tab: ", err);
             await StorageService.markNodeClosed(tabID);
         }
+    },
+
+    focusMediaTab: async () => {
+        const mediaID = get().activeMediaTabID;
+        if(mediaID !== null){
+            await get().focusTab(mediaID);
+        }
+    },
+
+    setActiveMediaTabID: (nodeID) => {
+        set({activeMediaTabID: nodeID});
     }
 }));

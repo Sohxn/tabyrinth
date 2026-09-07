@@ -3,6 +3,7 @@ import { useTreeStore } from '../../src/store/useTreeStore';
 import { TreeNode } from './TreeNode';
 import { type TreeStorageSchema } from '@/src/types';
 import { StorageService } from '@/src/services/storage';
+import { MediaCard } from './MediaCard';
 
 export default function App() {
   const { rootIDs, init, syncFromStorage, nodes } = useTreeStore();
@@ -40,6 +41,9 @@ export default function App() {
           {`${activeCount} ${activeCount === 1 ? 'tab' : 'tabs'}`}
         </div>
       </div>
+
+      {/* media card if there is any */}
+      <MediaCard />
 
       {/* tree */}
       <div className="flex-1 overflow-y-auto no-scrollbar pr-1">
