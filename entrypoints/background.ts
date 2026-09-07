@@ -39,21 +39,24 @@ export default defineBackground(() => {
     });
   });
 
-  // tab creation
+  // tab creation (new tab no parent -> automatically a root node)
   chrome.tabs.onCreated.addListener(async (tab) => {
     if(!tab.id) return;
-    const parentID = tab.openerTabId ?? null;
+
+    const targetURL = tab.url || tab.pendingUrl || 'chrome://newtab/'
+    const isNewTab = targetURL.includes('chrome://newtab') || targetURL.includes('about:blank') || targetURL === '';
+    const rawParentID = tab.openerTabId ?? null;
+
     const newTabNode: TabNode = {
       id: tab.id,
       title: tab.title || 'New Tab',
       url: tab.url || tab.pendingUrl || 'chrome://newtab/',
-      parentID: parentID !== null && parentID !== tab.id ? parentID : null,
+      parentID: isNewTab || rawParentID == tab.id ? null : rawParentID,
       windowID: tab.windowId,
       favIconURL: tab.favIconUrl,
       isClosed: false,
       childrenIDs: []
     };
-
     await StorageService.upsertNode(newTabNode);
   });
 

@@ -15,7 +15,6 @@ const enqueue = <T>(task: () => Promise<T>): Promise<T> => {
   });
 };
 
-
 function sanitizeTree(nodes: Record<string | number, TabNode>): {
   nodes: Record<string | number, TabNode>;
   rootIDs: (string | number)[];
@@ -154,5 +153,44 @@ export const StorageService = {
 
   async clearAll(): Promise<void> {
     await chrome.storage.local.remove('tabTreeData');
+  },
+
+  // reset all closed / stale nodes and keep only the active tabs
+  async resetToActiveTabsOnly(): Promise<void> {
+    return enqueue(async () => {
+      const openTabs = await chrome.tabs.query({});
+      const data = await chrome.storage.local.get("tabTreeData");
+      const state = (data.tabTreeData as TreeStorageSchema) || InitState;
+      // fresh
+      const freshNodes: Record<string | number, TabNode> = {};
+
+      for(const tab of openTabs){
+        if(!tab.id) continue;
+        const existing = state.nodes[tab.id];
+
+        freshNodes[tab.id] = {
+          id: tab.id,
+          title: tab.title || existing?.title || 'New Tab',
+          url: tab.url || tab.pendingUrl || existing?.url || 'chrome://newtab/',
+          parentID: null,
+          windowID: tab.windowId,
+          favIconURL: tab.favIconUrl || existing?.favIconURL,
+          isClosed: false,
+          childrenIDs: [], 
+        };
+      }
+
+      const {nodes: sanitizedNodes, rootIDs: sanitizedRoots} = sanitizeTree(freshNodes);
+
+      await chrome.storage.local.set({
+        tabTreeData: {
+          ...state,
+          nodes: sanitizedNodes,
+          rootIDs: sanitizedRoots
+        }
+      });
+
+      
+    });
   },
 };
