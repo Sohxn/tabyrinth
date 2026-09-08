@@ -47,7 +47,7 @@ export function TreeNode({nodeID, depth}: TreeNodeProps) {
         style={{ paddingLeft: `${depth * 14 + 8}px` }}
         className={`group relative flex items-center h-10 pr-2 my-[1px] rounded-2xl text-xs cursor-pointer transition-colors ${
           isActive
-            ? 'bg-[#375d6b] text-white font-medium'
+            ? 'bg-[#6E92BF] text-white font-medium'
             : node.isClosed
             ? 'bg-transparent text-gray-500 opacity-50'
             : 'text-[#e3e1e5] hover:bg-[#3b3b3b]'

@@ -9,6 +9,25 @@ export default function App() {
   const { rootIDs, init, syncFromStorage, nodes } = useTreeStore();
 
   useEffect(() => {
+    const port =  chrome.runtime.connect({
+      name: 'keepalive'
+    });
+
+    const ping = setInterval(() => {
+      try{
+        port.postMessage({
+          type: 'ping'
+        });
+      }catch{}
+    }, 20_000);
+
+    return () => {
+      clearInterval(ping);
+      port.disconnect();
+    }
+  }, []);
+
+  useEffect(() => {
     init();
 
     const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
@@ -29,7 +48,7 @@ export default function App() {
   }
 
   return (
-    <div className="flex flex-col h-screen w-full bg-[#000000] text-[#e3e1e5] p-2 text-xs select-none">
+    <div className="flex flex-col h-screen w-full bg-[#0C001A] text-[#e3e1e5] p-2 text-xs select-none">
 
       {/* header */}
       <div className="flex items-center justify-between mb-2 px-2 py-2 grid grid-cols-8 gap-2">
@@ -55,7 +74,7 @@ export default function App() {
       </div>
 
       {/* footer */}
-      <div className='absolute bottom-3 left-3 right-3 grid grid-cols-6 gap-4 items-center justify-center bg-transparent'>
+      <div className='flex bottom-3 left-3 right-3 grid grid-cols-6 gap-4 items-center justify-center bg-transparent'>
         {/* search bar */}
         <div className='rounded-full border-[2px] border-white h-12 my-2 py-2 justify-center items-center grid grid-cols-4 col-span-4'>
           <div className='col-span-1 ml-4'>search icon</div>

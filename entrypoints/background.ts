@@ -8,6 +8,22 @@ function isPlaceholder(url: string, title: string): boolean {
   return u === '' || u === 'about:blank' || u.startsWith('chrome://newtab') || t === 'new tab';
 }
 
+async function reconcileMediaState() {
+  const state = await StorageService.get();
+  const audibleTabs = await chrome.tabs.query({ audible: true });
+  const currentlyTracked = state.activeMediaTabID;
+
+  const stillAudible = currentlyTracked !== null &&
+    audibleTabs.some((t) => t.id === currentlyTracked);
+
+  if (!stillAudible) {
+    const next = audibleTabs.length > 0 ? audibleTabs[0]?.id ?? null : null;
+    if (next !== currentlyTracked) {
+      await StorageService.setActiveMediaTab(next);
+    }
+  }
+}
+
 export default defineBackground(() => {
   chrome.sidePanel.setPanelBehavior({
     openPanelOnActionClick: true
@@ -38,6 +54,22 @@ export default defineBackground(() => {
   };
   // sync tabs with the storage
   syncExistingTabs();
+
+  chrome.runtime.onConnect.addListener((port) => {
+    if(port.name !== 'keepalive') return;
+    port.onMessage.addListener(() => {
+      reconcileMediaState();
+    });
+  })
+
+  chrome.runtime.onStartup.addListener(() => {
+    reconcileMediaState();
+  });
+
+  chrome.alarms.create('media-reconcile', { periodInMinutes: 1 });
+  chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === 'media-reconcile') reconcileMediaState();
+  });
 
   // activation
   chrome.tabs.onActivated.addListener(async (activeInfo) => {
@@ -175,7 +207,7 @@ export default defineBackground(() => {
     } else if (state.activeMediaTabID === tabId) {
       // Tab went silent: Check if any other tab is playing audio
       const audibleTabs = await chrome.tabs.query({ audible: true });
-      const nextTabId = audibleTabs.length > 0 ? audibleTabs[0].id ?? null : null;
+      const nextTabId = audibleTabs.length > 0 ? audibleTabs[0]?.id ?? null : null;
       await StorageService.setActiveMediaTab(nextTabId);
     }
   }
@@ -186,7 +218,7 @@ export default defineBackground(() => {
     const state = await StorageService.get();
     if (state.activeMediaTabID === tabId) {
       const audibleTabs = await chrome.tabs.query({ audible: true });
-      const nextTabId = audibleTabs.length > 0 ? audibleTabs[0].id ?? null : null;
+      const nextTabId = audibleTabs.length > 0 ? audibleTabs[0]?.id ?? null : null;
       await StorageService.setActiveMediaTab(nextTabId);
     }
   });
