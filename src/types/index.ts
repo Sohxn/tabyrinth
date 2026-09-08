@@ -9,6 +9,17 @@ export interface TabNode {
     closedAt?: number;
     isHistoryNode?: boolean;
     childrenIDs: (string | number)[];
+
+    // util
+    notes?: TabNote[];
+
+}
+
+export interface TabNote {
+    id: string;
+    content: string;
+    createdAt: number;
+    sourceURL?: string;
 }
 
 // changes in state -> changes in:

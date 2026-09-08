@@ -8,6 +8,7 @@ interface TreeStoreState {
     lastActiveTabID: number | null;
     isPro: boolean;
     expandedNodeIDs: Record<string | number, boolean>;
+    expandedStackIDs: Record<string | number, boolean>;
     searchQuery: string;
 
     // secondary
@@ -16,6 +17,7 @@ interface TreeStoreState {
     init: () => Promise<void>;
     syncFromStorage: (schema: TreeStorageSchema) => void;
     toggleExpand: (nodeID:string | number) => void;
+    toggleStackExpand: (nodeID: string | number) => void;
     setSearchQuery: (query: string) => void;
     focusTab: (tabID: string | number) => Promise<void>;
     closeTab: (tabID: string | number) => Promise<void>;
@@ -29,6 +31,7 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
     lastActiveTabID: null,
     isPro: false,
     expandedNodeIDs: {},
+    expandedStackIDs: {},
     searchQuery: '',
     activeMediaTabID: null,
 
@@ -64,6 +67,15 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
             expandedNodeIDs: {
                 ...state.expandedNodeIDs,
                 [nodeID]: !state.expandedNodeIDs[nodeID],
+            },
+        }));
+    },
+
+    toggleStackExpand: (nodeID) => {
+        set((state) => ({
+            expandedStackIDs: {
+                ...state.expandedStackIDs,
+                [nodeID]: !state.expandedStackIDs[nodeID],
             },
         }));
     },

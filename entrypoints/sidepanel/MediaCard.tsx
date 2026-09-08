@@ -23,7 +23,7 @@ export function MediaCard() {
     return(
         <div
             onClick={handleFocusMediaTab}
-            className="mx-1 mb-3 p-2 flex items-center 
+            className="mx-1 h-20 mb-3 p-2 flex items-center 
             gap-2 rounded-3xl bg-red border border-red-400 
             backdrop-blur-md cursor-pointer 
             hover:border-red-500 transition-all 

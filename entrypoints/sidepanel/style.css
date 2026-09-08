@@ -1,15 +1,24 @@
 @import "tailwindcss";
 
 @font-face {
-  font-family: 'Inter';
-  src: url('../../assets/fonts/Inter-VariableFont_opsz,wght.ttf') format('truetype-variations');
+  font-family: 'ArchivoBlack';
+  src: url('../../assets/fonts/ArchivoBlack-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "DMSans";
+  src: url("../../assets/fonts/DMSans.ttf") format("truetype");
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
 }
 
 @theme {
-  --font-sans: 'Inter', system-ui, --apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+  --font-sans: "DMSans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-logo: 'ArchivoBlack';
 }
 
 @utility no-scrollbar {
@@ -21,6 +30,9 @@
 }
 
 body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
   margin: 0;
   font-family: var(--font-sans);
   user-select: none;
