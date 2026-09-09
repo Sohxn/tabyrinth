@@ -15,6 +15,7 @@ export interface TabNode {
 
 }
 
+// for per tab notes
 export interface TabNote {
     id: string;
     content: string;

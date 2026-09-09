@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { type FormEvent, type SyntheticEvent } from 'react';
 import { useTreeStore } from '../../src/store/useTreeStore';
 import { StorageService } from '@/src/services/storage';
 import { type TabNode } from '@/src/types';
@@ -49,6 +49,9 @@ export function TreeNode({nodeID, depth}: TreeNodeProps) {
     const focusTab = useTreeStore((state) => state.focusTab);
     const closeTab = useTreeStore((state) => state.closeTab);
     const lastActiveTabID = useTreeStore((state) => state.lastActiveTabID);
+    const [showNotes, setShowNotes] = useState(false);
+    const [newNoteInput, setNewNoteInput] = useState('');
+    
 
     
 
@@ -61,6 +64,10 @@ export function TreeNode({nodeID, depth}: TreeNodeProps) {
     const isActive = lastActiveTabID == node.id;
     const STACK_THRESHOLD = 5;
     const chainLength = hasChildren ? getChainLength(node, nodes) : 0;
+
+    // notes related
+    const notesCount = node.notes?.length ?? 0;
+
 
     // if depth exceeds 5 collapse to stacked tabs
     const exceedsDepthLimit = depth >= 5;
@@ -79,9 +86,16 @@ export function TreeNode({nodeID, depth}: TreeNodeProps) {
         await chrome.tabs.update(Number(node.id), { active: true });
         await chrome.windows.update(node.windowID, { focused: true });
       }
-    }
+    };
 
-    
+    // add manual note
+    const handleManualNoteToTab = async (e: SyntheticEvent<HTMLFormElement>) => {
+      e.preventDefault();
+      if(!newNoteInput.trim()) return;
+      await StorageService.addNoteToTab(node.id, newNoteInput);
+      setNewNoteInput('');
+    };
+
 
     return(
     <div className="relative flex-col w-full">
@@ -139,9 +153,76 @@ export function TreeNode({nodeID, depth}: TreeNodeProps) {
               ✕
             </button>
           )}
+
+          {/* note badge */}
+          <button onClick={(e) => {
+            e.stopPropagation();
+            setShowNotes((prev) => !prev);
+          }} className={`absolute -bottom-2 right-1 px-1.5
+          py-0.5 rounded text-[10px] flex items-center gap-1
+          transition-colors z-10
+          ${notesCount > 0 ? 'bg-black text-white hover:bg-gray-200'
+          : 'opacity-0opacity-0 group-hover:opacity-100 text-gray-400 hover:bg-[#483a54] hover:text-white'
+          }`}
+          title='view notes'>
+            
+            {/* notes icon */}
+            <span>o</span>
+
+          </button>
         
         </div>
       )}
+
+    {/* Expandable Tab Notepad Drawer */}
+    {showNotes && (
+      <div 
+        style={{ marginLeft: `${depth * 14 + 24}px` }}
+        className="my-1.5 p-2 bg-[#181124] border border-[#3c2a52] rounded-xl text-xs space-y-2 transition-all"
+      >
+        <div className="flex items-center justify-between text-[11px] text-purple-300 font-semibold border-b border-[#2d203f] pb-1">
+          <span>Tab Notepad</span>
+          <span className="text-[10px] text-gray-500">{notesCount} saved</span>
+        </div>
+
+        {/* Note List */}
+        {notesCount > 0 ? (
+          <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
+            {node.notes?.map((note) => (
+              <div key={note.id} className="group/note relative bg-[#231834] p-2 rounded-lg border border-[#3d2b56] text-[11px] text-gray-200">
+                <p className="whitespace-pre-wrap break-words pr-4">{note.content}</p>
+                <button
+                  onClick={() => StorageService.deleteNoteFromTab(node.id, note.id)}
+                  className="absolute top-1 right-1 opacity-0 group-hover/note:opacity-100 text-gray-400 hover:text-red-400 p-0.5 text-[9px]"
+                  title="Delete note"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-[10px] text-gray-500 italic">No notes yet. Highlight text & right-click to add.</p>
+        )}
+
+        {/* Manual Input Form */}
+        <form onSubmit={handleManualNoteToTab} className="flex gap-1 pt-1">
+          <input
+            type="text"
+            value={newNoteInput}
+            onChange={(e) => setNewNoteInput(e.target.value)}
+            placeholder="Type a quick note..."
+            className="flex-1 bg-[#0d0716] border border-[#3b2b4f] rounded-lg px-2 py-1 text-[11px] text-gray-200 focus:outline-none focus:border-purple-500"
+          />
+          <button
+            type="submit"
+            className="px-2 py-1 bg-purple-700 hover:bg-purple-600 text-white rounded-lg text-[10px] font-medium transition-colors"
+          >
+            Add
+          </button>
+        </form>
+      </div>
+    )}
 
     {/* card stack */}
     {hasChildren && isExpanded && (

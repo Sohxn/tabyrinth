@@ -55,12 +55,30 @@ export default defineBackground(() => {
   // sync tabs with the storage
   syncExistingTabs();
 
+  // add additional menu items
+  chrome.runtime.onInstalled.addListener(() => {
+    chrome.contextMenus.create({
+      id: "add-note-to-tab",
+      title: "Add note to tab",
+      contexts:["selection", "page"] 
+    });
+  });
+
+  chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+    if(info.menuItemId === "add-note-to-tab" && tab?.id){
+      const noteText = info.selectionText || info.pageUrl || "";
+      if(noteText.trim().length > 0){
+        await StorageService.addNoteToTab(tab.id, noteText, info.pageUrl);
+      }
+    }
+  });
+
   chrome.runtime.onConnect.addListener((port) => {
     if(port.name !== 'keepalive') return;
     port.onMessage.addListener(() => {
       reconcileMediaState();
     });
-  })
+  });
 
   chrome.runtime.onStartup.addListener(() => {
     reconcileMediaState();
@@ -222,4 +240,6 @@ export default defineBackground(() => {
       await StorageService.setActiveMediaTab(nextTabId);
     }
   });
+
+
 });

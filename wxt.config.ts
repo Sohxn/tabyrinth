@@ -7,7 +7,13 @@ export default defineConfig({
     name: 'Tabyrinth',
     description: 'Vertical tabs but better',
     version: '1.0.0',
-    permissions: ['tabs', 'storage', 'sidePanel', 'alarms'],
+    permissions: [
+      'tabs', 
+      'storage', 
+      'sidePanel', 
+      'alarms',
+      'contextMenus'
+    ],
     action: {},
     side_panel: {
       default_path: 'sidepanel.html'

@@ -1,4 +1,4 @@
-import { type TreeStorageSchema, type TabNode } from "../types";
+import { type TreeStorageSchema, type TabNode, type TabNote} from "../types";
 
 const InitState: TreeStorageSchema = {
   nodes: {},
@@ -278,6 +278,74 @@ export const StorageService = {
     }));
   },
 
+
+  // per tab notes
+  async addNoteToTab(tabID: string | number, content: string, sourceURL?: string): Promise<void> {
+    return enqueue(async () => {
+      const data = await chrome.storage.local.get('tabTreeData');
+      const state = (data.tabTreeData as TreeStorageSchema) || InitState;
+      const target = state.nodes[tabID];
+      if(!target) return;
+
+      const newNote: TabNote = {
+        id:  `note_${Date.now()}_${Math.random().toString(36).substring(2,6)}`,
+        content: content.trim(),
+        createdAt: Date.now(),
+        sourceURL: sourceURL
+      };
+
+      const updatedNodes = {
+        ...state.nodes,
+        [tabID]: {
+          ...target,
+          notes: [...(target.notes || []), newNote],
+        },
+      };
+
+      const {
+        nodes: sanitizedNodes,
+        rootIDs: sanitizedRoots
+      } = sanitizeTree(updatedNodes);
+
+      await chrome.storage.local.set({
+        tabTreeData: {
+          ...state,
+          nodes: sanitizedNodes,
+          rootIDs: sanitizedRoots
+        }
+      });
+    });
+  },
+
+  async deleteNoteFromTab(tabID: string | number, noteID: string): Promise<void> {
+    return enqueue(async () => {
+      const data = await chrome.storage.local.get('tabTreeData');
+      const state = (data.tabTreeData as TreeStorageSchema) || InitState;
+      const target = state.nodes[tabID];
+      if(!target || !target.notes) return;
+
+      const updatedNodes = {
+        ...state.nodes,
+        [tabID]: {
+          ...target,
+          nodes: target.notes.filter((n) => n.id !== noteID),
+        },
+      };
+
+      const {
+        nodes: sanitizedNodes,
+        rootIDs: sanitizedRoots
+      } = sanitizeTree(updatedNodes);
+
+      await chrome.storage.local.set({
+        tabTreeData: {
+          ...state,
+          nodes: sanitizedNodes,
+          rootIDs: sanitizedRoots
+        },
+      });
+    });
+  },
 
   // clear tab tree
   async clearAll(): Promise<void> {
