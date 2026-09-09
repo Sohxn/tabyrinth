@@ -1,7 +1,8 @@
-import React, { type FormEvent, type SyntheticEvent } from 'react';
+import React, { type SyntheticEvent } from 'react';
 import { useTreeStore } from '../../src/store/useTreeStore';
 import { StorageService } from '@/src/services/storage';
 import { type TabNode } from '@/src/types';
+import {PencilCircleIcon, PencilSimpleIcon} from '@phosphor-icons/react';
 
 interface TreeNodeProps {
     nodeID: string | number;
@@ -51,6 +52,7 @@ export function TreeNode({nodeID, depth}: TreeNodeProps) {
     const lastActiveTabID = useTreeStore((state) => state.lastActiveTabID);
     const [showNotes, setShowNotes] = useState(false);
     const [newNoteInput, setNewNoteInput] = useState('');
+    const [isHovered, setIsHovered] = useState(false);
     
 
     
@@ -107,12 +109,13 @@ export function TreeNode({nodeID, depth}: TreeNodeProps) {
       )}
       
       {!shouldCollapseStack && (
-        <div
+        <div onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
           onClick={handleTabClick}
           style={{ paddingLeft: `${depth * 14 + 8}px` }}
-          className={`group relative flex items-center h-10 pr-2 my-[1px] rounded-2xl text-xs cursor-pointer transition-colors ${
+          className={`group relative flex items-center h-10 pr-2 my-[1px] rounded-2xl text-xs cursor-pointer transition-colors border-2 border-[#333333] ${
             isActive
-              ? 'border-2 text-white font-medium'
+              ? 'border-2 border-white text-white font-medium'
               : node.isClosed
               ? 'bg-transparent text-gray-500 opacity-50'
               : 'text-[#e3e1e5] hover:bg-[#3b3b3b]'
@@ -155,22 +158,50 @@ export function TreeNode({nodeID, depth}: TreeNodeProps) {
           )}
 
           {/* note badge */}
-          <button onClick={(e) => {
-            e.stopPropagation();
-            setShowNotes((prev) => !prev);
-          }} className={`absolute -bottom-2 right-1 px-1.5
-          py-0.5 rounded text-[10px] flex items-center gap-1
-          transition-colors z-10
-          ${notesCount > 0 ? 'bg-black text-white hover:bg-gray-200'
-          : 'opacity-0opacity-0 group-hover:opacity-100 text-gray-400 hover:bg-[#483a54] hover:text-white'
-          }`}
-          title='view notes'>
-            
-            {/* notes icon */}
-            <span>o</span>
+          {notesCount > 0 ?
+            // condition: has notes 
+            (
+              <>
+                <button onClick={(e) => {
+                  e.stopPropagation();
+                  setShowNotes((prev) => !prev);
+                }} className='absolute right-1 px-1.5
+                  py-0.5 rounded-full h-6 w-6 bg-white flex gap-1
+                  text-center justify-center items-center'>
+                  <span className='text-black text-md font-bold'>{notesCount}</span>
+                </button>
 
-          </button>
-        
+                {/* only show edit if hovered */}
+                {isHovered && (
+                  <button onClick={(e) => {
+                    e.stopPropagation();
+                    setShowNotes((prev) => (!prev));
+                  }}
+                  className='relative mr-5 right-1 px-1.5
+                  py-0.5 rounded-full h-6 w-6 bg-white flex gap-1
+                  text-center justify-center items-center '>
+                    <PencilSimpleIcon className='text-black' size={40}/>
+                  </button>
+                )}
+              </>
+            ) : 
+
+          // conditon: no notes
+            (isHovered && 
+              (
+              <button onClick={(e) => {
+                  e.stopPropagation();
+                  setShowNotes((prev) => !prev);
+                }} className='relative right-1 px-1.5
+                  py-0.5 rounded-full h-6 w-6 bg-white flex gap-1
+                  text-center justify-center items-center '>
+                  <span className='text-black text-md font-bold'>
+                    <PencilSimpleIcon className='text-black'/>
+                  </span>
+              </button>
+              )  
+            )
+          }
         </div>
       )}
 
