@@ -2,10 +2,48 @@ import { defineBackground } from "#imports";
 import { StorageService } from "@/src/services/storage";
 import { type TabNode } from "@/src/types";
 
+// not the best 
+const RESOURCE_ID_KEYS = new Set([
+  'v', 'id', 'item', 'doc', 'article', 'page_id'
+]);
+
 function isPlaceholder(url: string, title: string): boolean {
   const u = (url || '').toLowerCase();
   const t = (title || '').toLowerCase();
   return u === '' || u === 'about:blank' || u.startsWith('chrome://newtab') || t === 'new tab';
+}
+
+// edge case: SPAs like google fonts
+function isSamePageNavigation(oldUrlStr: string, newUrlStr: string): boolean{
+  if(!oldUrlStr || !newUrlStr) return false;
+
+  const cleanOld = oldUrlStr.split('#')[0];
+  const cleanNew = newUrlStr.split('#')[0];
+
+  if(cleanOld === cleanNew) return true;
+
+  try{
+    const oldUrl = new URL(oldUrlStr);
+    const newUrl = new URL(newUrlStr);
+
+    if(oldUrl.origin !==  newUrl.origin || oldUrl.pathname !== newUrl.pathname) {
+      return false;
+    }
+    
+    const oldParams = oldUrl.searchParams;
+    const newParams = newUrl.searchParams;
+
+    for(const key of RESOURCE_ID_KEYS){
+      if(oldParams.has(key) && newParams.has(key) && oldParams.get(key) !== newParams.get(key)){
+        // split
+        return false;
+      }
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function reconcileMediaState() {
@@ -119,21 +157,27 @@ export default defineBackground(() => {
 
   // tab updation
   chrome.tabs.onUpdated.addListener(async (tabID, changeInfo, tab) => {
-    if(changeInfo.status !== 'complete' || !tab.url) return;
+    if (!tab.url) return;
+
+    const hasRelevantChange = changeInfo.url !== undefined || 
+      changeInfo.title !== undefined || changeInfo.favIconUrl !== undefined ||
+      changeInfo.status !== undefined || changeInfo.status === 'complete';
+
+    if(!hasRelevantChange) return;
 
     await StorageService.transaction((state) => {
       const existing = state.nodes[tabID];
       if(!existing) return {};
 
-      const cleanOldURL = existing.url.split('#')[0];
-      const cleanNewURL = tab.url!.split('#')[0];
+      const samePage = isSamePageNavigation(existing.url, tab.url!);
 
       // same page, metadata only -> no split
-      if(cleanOldURL === cleanNewURL){
-        return {
+      if(samePage || isPlaceholder(existing.url, existing.title)){
+        return{
           nodes: {
             [tabID]: {
               ...existing,
+              url: tab.url!,
               title: tab.title || existing.title,
               favIconURL: tab.favIconUrl || existing.favIconURL
             }
@@ -141,19 +185,20 @@ export default defineBackground(() => {
         };
       }
 
+      // remove this if the new fix works
       // leaving a blank/new-tab placeholder -> overwrite in place, no split
-      if(isPlaceholder(existing.url, existing.title)){
-        return {
-          nodes: {
-            [tabID]: {
-              ...existing,
-              url: tab.url!,
-              title: tab.title || 'Loading...',
-              favIconURL: tab.favIconUrl
-            }
-          }
-        };
-      }
+      // if(isPlaceholder(existing.url, existing.title)){
+      //   return {
+      //     nodes: {
+      //       [tabID]: {
+      //         ...existing,
+      //         url: tab.url!,
+      //         title: tab.title || 'Loading...',
+      //         favIconURL: tab.favIconUrl
+      //       }
+      //     }
+      //   };
+      // }
 
       // navigation -> split so the old page stays in the tree
       const historyNodeID = `hist_${tabID}_${Date.now()}`;
@@ -234,7 +279,7 @@ export default defineBackground(() => {
   // Clear pinned tab if it gets closed
   chrome.tabs.onRemoved.addListener(async (tabId) => {
     const state = await StorageService.get();
-    if (state.activeMediaTabID === tabId) {
+    if (state.activeMediaTabID === tabId) { 
       const audibleTabs = await chrome.tabs.query({ audible: true });
       const nextTabId = audibleTabs.length > 0 ? audibleTabs[0]?.id ?? null : null;
       await StorageService.setActiveMediaTab(nextTabId);
