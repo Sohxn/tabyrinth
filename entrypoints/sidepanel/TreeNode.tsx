@@ -127,7 +127,7 @@ export function TreeNode({nodeID, depth}: TreeNodeProps) {
               toggleExpand(node.id);
             }}
             className={`w-4 h-4 flex items-center justify-center rounded hover:bg-[#483a54] mr-1 ${
-              hasChildren ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            hasChildren ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}>
             <span
               className={`text-[9px] text-gray-400 transition-transform duration-150 inline-block ${
@@ -146,62 +146,68 @@ export function TreeNode({nodeID, depth}: TreeNodeProps) {
             {node.title || 'New Tab'}
           </span>
           
-          {!node.isClosed && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                closeTab(node.id);
-              }}
-              className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-[#483a54] text-gray-400 hover:text-white">
-              ✕
-            </button>
-          )}
-
-          {/* note badge */}
-          {notesCount > 0 ?
-            // condition: has notes 
-            (
-              <>
-                <button onClick={(e) => {
-                  e.stopPropagation();
-                  setShowNotes((prev) => !prev);
-                }} className='absolute right-1 px-1.5
-                  py-0.5 rounded-full h-6 w-6 bg-white flex gap-1
-                  text-center justify-center items-center'>
-                  <span className='text-black text-md font-bold'>{notesCount}</span>
-                </button>
-
+          
+          {/* interaction badges */}
+          <div className='right-1 flex items-center gap-1'>
+            {/* note badge */}
+            {notesCount > 0 ?
+              // condition: has notes 
+              (
+                <>
                 {/* only show edit if hovered */}
-                {isHovered && (
+                  {isHovered && (
+                    <button onClick={(e) => {
+                      e.stopPropagation();
+                      setShowNotes((prev) => (!prev));
+                    }}
+                    className='px-1.5
+                    py-0.5 rounded-full h-6 w-6 bg-white flex
+                    text-center justify-center items-center '>
+                      <PencilSimpleIcon className='text-black' size={40}/>
+                    </button>
+                  )}
+                  
                   <button onClick={(e) => {
                     e.stopPropagation();
-                    setShowNotes((prev) => (!prev));
-                  }}
-                  className='relative mr-5 right-1 px-1.5
-                  py-0.5 rounded-full h-6 w-6 bg-white flex gap-1
-                  text-center justify-center items-center '>
-                    <PencilSimpleIcon className='text-black' size={40}/>
+                    setShowNotes((prev) => !prev);
+                  }} className='px-1.5
+                    py-0.5 rounded-full h-6 w-6 bg-white flex
+                    text-center justify-center items-center'>
+                    <span className='text-black text-md font-bold'>{notesCount}</span>
                   </button>
-                )}
-              </>
-            ) : 
+                  
+                </>
+              ) : 
 
-          // conditon: no notes
-            (isHovered && 
-              (
-              <button onClick={(e) => {
+            // conditon: no notes
+              (isHovered && 
+                (
+                <button onClick={(e) => {
+                    e.stopPropagation();
+                    setShowNotes((prev) => !prev);
+                  }} className='px-1.5
+                    py-0.5 rounded-full h-6 w-6 bg-white flex
+                    text-center justify-center items-center '>
+                    <span className='text-black text-md font-bold'>
+                      <PencilSimpleIcon className='text-black'/>
+                    </span>
+                </button>
+                )  
+              )
+            }
+
+            {!node.isClosed && (
+              <button
+                onClick={(e) => {
                   e.stopPropagation();
-                  setShowNotes((prev) => !prev);
-                }} className='relative right-1 px-1.5
-                  py-0.5 rounded-full h-6 w-6 bg-white flex gap-1
-                  text-center justify-center items-center '>
-                  <span className='text-black text-md font-bold'>
-                    <PencilSimpleIcon className='text-black'/>
-                  </span>
+                  closeTab(node.id);
+                }}
+                className="h-6 w-6 flex items-center justify-center rounded hover:bg-[#483a54] text-gray-400 hover:text-white">
+                ✕
               </button>
-              )  
-            )
-          }
+            )}
+          </div> 
+              
         </div>
       )}
 

@@ -99,6 +99,31 @@ export const StorageService = {
     });
   },
 
+  // edge case for SPA (single page applications)
+  async updateNodeProperties(tabID: string | number, updates: Partial<TabNode>): Promise<void> {
+    return enqueue(async () => {
+      const data = await chrome.storage.local.get("tabTreeData");
+      const state = (data.tabTreeData as TreeStorageSchema) || InitState;
+      const target = state.nodes[tabID];
+      if(!target) return;
+
+      const updatedNodes = {
+        ...state.nodes,
+        [tabID]: {
+          ...target,
+          ...updates,
+        },
+      };
+      
+      await chrome.storage.local.set({
+        tabTreeData: {
+          ...state,
+          nodes: updatedNodes
+        },
+      });
+    });
+  },
+
   async upsertNode(node: TabNode): Promise<void> {
     return enqueue(async () => {
       const data = await chrome.storage.local.get("tabTreeData");
