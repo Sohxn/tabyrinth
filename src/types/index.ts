@@ -5,11 +5,12 @@ export interface TabNode {
     parentID: string | number | null; 
     windowID: number;
     favIconURL?: string;
-    isClosed: boolean;
-    closedAt?: number;
     isHistoryNode?: boolean;
     childrenIDs: (string | number)[];
-
+    // states
+    isLoading: boolean;
+    isClosed: boolean;
+    closedAt?: number;
     // util
     notes?: TabNote[];
 

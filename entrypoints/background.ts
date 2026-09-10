@@ -14,27 +14,27 @@ function isPlaceholder(url: string, title: string): boolean {
 }
 
 // edge case: SPAs like google fonts
-function isSamePageNavigation(oldUrlStr: string, newUrlStr: string): boolean{
-  if(!oldUrlStr || !newUrlStr) return false;
+function isSamePageNavigation(oldUrlStr: string, newUrlStr: string): boolean {
+  if (!oldUrlStr || !newUrlStr) return false;
 
   const cleanOld = oldUrlStr.split('#')[0];
   const cleanNew = newUrlStr.split('#')[0];
 
-  if(cleanOld === cleanNew) return true;
+  if (cleanOld === cleanNew) return true;
 
-  try{
+  try {
     const oldUrl = new URL(oldUrlStr);
     const newUrl = new URL(newUrlStr);
 
-    if(oldUrl.origin !==  newUrl.origin || oldUrl.pathname !== newUrl.pathname) {
+    if (oldUrl.origin !== newUrl.origin || oldUrl.pathname !== newUrl.pathname) {
       return false;
     }
-    
+
     const oldParams = oldUrl.searchParams;
     const newParams = newUrl.searchParams;
 
-    for(const key of RESOURCE_ID_KEYS){
-      if(oldParams.has(key) && newParams.has(key) && oldParams.get(key) !== newParams.get(key)){
+    for (const key of RESOURCE_ID_KEYS) {
+      if (oldParams.has(key) && newParams.has(key) && oldParams.get(key) !== newParams.get(key)) {
         // split
         return false;
       }
@@ -76,7 +76,7 @@ export default defineBackground(() => {
 
     const tabs = await chrome.tabs.query({});
     for (const tab of tabs) {
-      if(!tab.id) continue;
+      if (!tab.id) continue;
       const tabNode: TabNode = {
         id: tab.id,
         title: tab.title || 'New Tab',
@@ -84,6 +84,7 @@ export default defineBackground(() => {
         parentID: tab.openerTabId ?? null,
         windowID: tab.windowId,
         favIconURL: tab.favIconUrl,
+        isLoading: tab.status === 'loading',
         isClosed: false,
         childrenIDs: []
       };
@@ -98,21 +99,21 @@ export default defineBackground(() => {
     chrome.contextMenus.create({
       id: "add-note-to-tab",
       title: "Add note to tab",
-      contexts:["selection", "page"] 
+      contexts: ["selection", "page"]
     });
   });
 
   chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-    if(info.menuItemId === "add-note-to-tab" && tab?.id){
+    if (info.menuItemId === "add-note-to-tab" && tab?.id) {
       const noteText = info.selectionText || info.pageUrl || "";
-      if(noteText.trim().length > 0){
+      if (noteText.trim().length > 0) {
         await StorageService.addNoteToTab(tab.id, noteText, info.pageUrl);
       }
     }
   });
 
   chrome.runtime.onConnect.addListener((port) => {
-    if(port.name !== 'keepalive') return;
+    if (port.name !== 'keepalive') return;
     port.onMessage.addListener(() => {
       reconcileMediaState();
     });
@@ -136,7 +137,7 @@ export default defineBackground(() => {
 
   // tab creation (new tab no parent -> automatically a root node)
   chrome.tabs.onCreated.addListener(async (tab) => {
-    if(!tab.id) return;
+    if (!tab.id) return;
 
     const targetURL = tab.url || tab.pendingUrl || 'chrome://newtab/'
     const isNewTab = targetURL.includes('chrome://newtab') || targetURL.includes('about:blank') || targetURL === '';
@@ -149,9 +150,11 @@ export default defineBackground(() => {
       parentID: isNewTab || rawParentID == tab.id ? null : rawParentID,
       windowID: tab.windowId,
       favIconURL: tab.favIconUrl,
+      isLoading: tab.status === 'loading',
       isClosed: false,
       childrenIDs: []
     };
+
     await StorageService.upsertNode(newTabNode);
   });
 
@@ -159,46 +162,33 @@ export default defineBackground(() => {
   chrome.tabs.onUpdated.addListener(async (tabID, changeInfo, tab) => {
     if (!tab.url) return;
 
-    const hasRelevantChange = changeInfo.url !== undefined || 
+    const hasRelevantChange = changeInfo.url !== undefined ||
       changeInfo.title !== undefined || changeInfo.favIconUrl !== undefined ||
       changeInfo.status !== undefined || changeInfo.status === 'complete';
 
-    if(!hasRelevantChange) return;
+    if (!hasRelevantChange) return;
 
     await StorageService.transaction((state) => {
       const existing = state.nodes[tabID];
-      if(!existing) return {};
+      if (!existing) return {};
 
+      const isLoading = changeInfo.status ? changeInfo.status === 'loading' : (tab.status === 'loading');
+      const currentURL = tab.url || existing.url;
       const samePage = isSamePageNavigation(existing.url, tab.url!);
 
       // same page, metadata only -> no split
-      if(samePage || isPlaceholder(existing.url, existing.title)){
-        return{
+      if (samePage || isPlaceholder(existing.url, existing.title)) {
+        return {
           nodes: {
             [tabID]: {
               ...existing,
-              url: tab.url!,
+              url: currentURL,
               title: tab.title || existing.title,
               favIconURL: tab.favIconUrl || existing.favIconURL
             }
           }
         };
       }
-
-      // remove this if the new fix works
-      // leaving a blank/new-tab placeholder -> overwrite in place, no split
-      // if(isPlaceholder(existing.url, existing.title)){
-      //   return {
-      //     nodes: {
-      //       [tabID]: {
-      //         ...existing,
-      //         url: tab.url!,
-      //         title: tab.title || 'Loading...',
-      //         favIconURL: tab.favIconUrl
-      //       }
-      //     }
-      //   };
-      // }
 
       // navigation -> split so the old page stays in the tree
       const historyNodeID = `hist_${tabID}_${Date.now()}`;
@@ -208,6 +198,7 @@ export default defineBackground(() => {
         id: historyNodeID,
         isHistoryNode: true,
         isClosed: true,
+        isLoading: false,
         childrenIDs: [tabID]
       };
 
@@ -218,6 +209,7 @@ export default defineBackground(() => {
         parentID: historyNodeID,
         windowID: tab.windowId,
         favIconURL: tab.favIconUrl,
+        isLoading,
         isClosed: false,
         childrenIDs: existing.childrenIDs.filter((id) => String(id) !== historyNodeID)
       };
@@ -228,15 +220,15 @@ export default defineBackground(() => {
       };
 
       // point the old parent at the history node instead of the live tab
-      if(existing.parentID !== null && existing.parentID !== undefined && state.nodes[existing.parentID]){
+      if (existing.parentID !== null && existing.parentID !== undefined && state.nodes[existing.parentID]) {
         const parentNode = state.nodes[existing.parentID];
-        if(parentNode){
-            updatedNodes[existing.parentID] = {
+        if (parentNode) {
+          updatedNodes[existing.parentID] = {
             ...parentNode,
             childrenIDs: parentNode.childrenIDs.map((cId) => (cId === tabID ? historyNodeID : cId))
           };
         }
-        
+
       }
 
       return { nodes: updatedNodes };
@@ -247,39 +239,39 @@ export default defineBackground(() => {
   chrome.tabs.onRemoved.addListener(async (tabID) => {
     const state = await StorageService.get();
     const node = state.nodes[tabID];
-    if(!node) return;
+    if (!node) return;
 
     const isPlaceholderTab = !node.url || node.url.includes('chrome://newtab') || node.url.includes('about:blank');
     const hasNoChildren = !node.childrenIDs || node.childrenIDs.length === 0;
 
-    if(isPlaceholderTab && hasNoChildren){
+    if (isPlaceholderTab && hasNoChildren) {
       await StorageService.deleteNode(tabID);
-    }else{
+    } else {
       await StorageService.markNodeClosed(tabID);
     }
   });
 
   // detect background audio 
   chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.audible !== undefined) {
-    const state = await StorageService.get();
+    if (changeInfo.audible !== undefined) {
+      const state = await StorageService.get();
 
-    if (changeInfo.audible) {
-      // Pin this newly playing tab as the active media tab
-      await StorageService.setActiveMediaTab(tabId);
-    } else if (state.activeMediaTabID === tabId) {
-      // Tab went silent: Check if any other tab is playing audio
-      const audibleTabs = await chrome.tabs.query({ audible: true });
-      const nextTabId = audibleTabs.length > 0 ? audibleTabs[0]?.id ?? null : null;
-      await StorageService.setActiveMediaTab(nextTabId);
+      if (changeInfo.audible) {
+        // Pin this newly playing tab as the active media tab
+        await StorageService.setActiveMediaTab(tabId);
+      } else if (state.activeMediaTabID === tabId) {
+        // Tab went silent: Check if any other tab is playing audio
+        const audibleTabs = await chrome.tabs.query({ audible: true });
+        const nextTabId = audibleTabs.length > 0 ? audibleTabs[0]?.id ?? null : null;
+        await StorageService.setActiveMediaTab(nextTabId);
+      }
     }
-  }
-});
+  });
 
   // Clear pinned tab if it gets closed
   chrome.tabs.onRemoved.addListener(async (tabId) => {
     const state = await StorageService.get();
-    if (state.activeMediaTabID === tabId) { 
+    if (state.activeMediaTabID === tabId) {
       const audibleTabs = await chrome.tabs.query({ audible: true });
       const nextTabId = audibleTabs.length > 0 ? audibleTabs[0]?.id ?? null : null;
       await StorageService.setActiveMediaTab(nextTabId);
