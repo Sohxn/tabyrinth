@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTreeStore } from "@/src/store/useTreeStore";
 
 export function MediaCard() {
   const activeMediaTabID = useTreeStore((state) => state.activeMediaTabID);
   const nodes = useTreeStore((state) => state.nodes);
+  const [accentColor, setAccentColor] = useState('#ffffff')
   // special media node
   const mediaNode = activeMediaTabID ? nodes[activeMediaTabID] : null;
 
@@ -21,10 +22,10 @@ export function MediaCard() {
   };
 
   return (
-    <div
-      onClick={handleFocusMediaTab}
+    // source aware media card
+    <div onClick={handleFocusMediaTab}
       className="mx-1 h-20 mb-3 p-2 flex items-center 
-            gap-2 rounded-3xl bg-red border border-red-400 
+            gap-2 rounded-3xl bg-black border border-red-400 
             backdrop-blur-md cursor-pointer 
             hover:border-red-500 transition-all 
             shadow-lg group">

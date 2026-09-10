@@ -101,18 +101,18 @@ export function TreeNode({ nodeID, depth }: TreeNodeProps) {
 
   return (
     <div className="relative flex-col">
-      {/* {depth > 0 && !shouldCollapseStack && (
+      {depth > 0 && !shouldCollapseStack && (
         <div
-          className="absolute top-0 bottom-0 border-l border-[#362e3d]"
-          style={{ left: `${depth * 14 - 2}px` }}
+          className="absolute top-0 bottom-15 border-l border-gray-500"
+          style={{ left: depth === 1 ? 4 : `${depth * 14 - 2}px` }}
         />
-      )} */}
+      )}
 
       {!shouldCollapseStack && (
         <div onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           onClick={handleTabClick}
-          style={{ marginLeft: depth === 0 ? 0 : `${depth * 14 + 8}px` }}
+          style={{ marginLeft: (depth === 0 || isActive) ? 0 : `${depth * 14 + 8}px` }}
           className={`group relative flex items-center h-12 pr-2 my-[1px] rounded-2xl text-xs cursor-pointer transition-colors border-2 border-[#333333] 
             ${isActive ? 'bg-[#416387] text-bold font-medium' : node.isClosed
               ? 'bg-black text-white opacity-40'
@@ -263,7 +263,7 @@ export function TreeNode({ nodeID, depth }: TreeNodeProps) {
           leafNode && (
             <div
               className="relative my-2 transition-all duration-300 ease-in-out"
-              style={{ paddingLeft: `${depth * 14 + 8}px` }}
+              style={{ paddingLeft: isActive ? 0 : `${depth * 14 + 8}px` }}
             >
               {/* Background stack visual effect layers */}
               <div className="absolute inset-x-2 -bottom-1 h-8 bg-[#2d2138] border border-[#4a3b59] rounded-2xl opacity-60 scale-[0.96] pointer-events-none" />
