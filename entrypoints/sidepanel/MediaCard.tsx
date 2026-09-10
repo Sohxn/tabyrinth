@@ -2,33 +2,33 @@ import React from "react";
 import { useTreeStore } from "@/src/store/useTreeStore";
 
 export function MediaCard() {
-    const activeMediaTabID = useTreeStore((state) => state.activeMediaTabID);
-    const nodes = useTreeStore((state) => state.nodes);
-    // special media node
-    const mediaNode = activeMediaTabID ? nodes[activeMediaTabID] : null;
+  const activeMediaTabID = useTreeStore((state) => state.activeMediaTabID);
+  const nodes = useTreeStore((state) => state.nodes);
+  // special media node
+  const mediaNode = activeMediaTabID ? nodes[activeMediaTabID] : null;
 
-    if(!mediaNode || mediaNode.isClosed) return null;
+  if (!mediaNode || mediaNode.isClosed) return null;
 
-    const handleFocusMediaTab = async () => {
-        await chrome.tabs.update(Number(mediaNode.id), {active: true});
-        await chrome.windows.update(mediaNode.windowID, {focused: true});
-    }; 
+  const handleFocusMediaTab = async () => {
+    await chrome.tabs.update(Number(mediaNode.id), { active: true });
+    await chrome.windows.update(mediaNode.windowID, { focused: true });
+  };
 
-    const handleMuteMediaTab = async (e: React.MouseEvent) => {
-        e.stopPropagation();
-        const tab = await chrome.tabs.get(Number(mediaNode.id));
-        await chrome.tabs.update(Number(mediaNode.id), { muted: !tab.mutedInfo?.muted });
-    };
+  const handleMuteMediaTab = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const tab = await chrome.tabs.get(Number(mediaNode.id));
+    await chrome.tabs.update(Number(mediaNode.id), { muted: !tab.mutedInfo?.muted });
+  };
 
-    return(
-        <div
-            onClick={handleFocusMediaTab}
-            className="mx-1 h-20 mb-3 p-2 flex items-center 
+  return (
+    <div
+      onClick={handleFocusMediaTab}
+      className="mx-1 h-20 mb-3 p-2 flex items-center 
             gap-2 rounded-3xl bg-red border border-red-400 
             backdrop-blur-md cursor-pointer 
             hover:border-red-500 transition-all 
             shadow-lg group">
-      
+
       {/* visualizer */}
       <div className="flex items-end gap-[2px] h-3.5 w-3.5 shrink-0 ml-1">
         <span className="w-1 bg-red-400 animate-bounce h-full rounded-full" />
@@ -61,5 +61,5 @@ export function MediaCard() {
         </svg>
       </button>
     </div>
-    );
+  );
 }

@@ -10,22 +10,22 @@ export default function App() {
   const treeContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if(treeContainerRef.current){
+    if (treeContainerRef.current) {
       treeContainerRef.current.scrollTop = treeContainerRef.current.scrollHeight;
     }
   }, [rootIDs]);
 
   useEffect(() => {
-    const port =  chrome.runtime.connect({
+    const port = chrome.runtime.connect({
       name: 'keepalive'
     });
 
     const ping = setInterval(() => {
-      try{
+      try {
         port.postMessage({
           type: 'ping'
         });
-      }catch{}
+      } catch { }
     }, 20_000);
 
     return () => {
@@ -52,22 +52,24 @@ export default function App() {
   // create new tab
   const createNewTab = async () => {
     await chrome.tabs.create({});
-  } 
+  }
   // reset button function
   const resetTree = async () => {
     await StorageService.resetToActiveTabsOnly();
   }
 
   return (
-    <div className="flex flex-col h-screen w-full bg-[#111111] text-[#e3e1e5] p-2 text-xs select-none overflow-hidden">
+    <div className="flex flex-col h-screen w-full bg-[#21252b] text-[#e3e1e5] p-2 text-xs select-none overflow-hidden">
 
       {/* header */}
-      <div className="flex items-center justify-between mb-2 px-2 py-2 grid grid-cols-8 gap-4">
-        <span className="font-logo col-span-2 text-lg tracking-wide text-gray-200">Tabyrinth</span>
+      <div className="flex items-center justify-between px-2 h-16">
+        <div className="font-logo text-lg text-gray-200">Tabyrinth</div>
 
-        <div className='flex col-span-4 rounded-3xl h-10 mx-2 w-full border-[1.5px] bg-white'></div>
-        
-        <div className="flex col-span-2 text-[12px] text-gray-400 bg-[#000000] py-2 mt-1 ml-4 rounded-full border-2 border-[#3b3244] justify-center items-center">
+        <div className='flex items-center justify-center rounded-3xl h-10 w-full max-w-xs bg-black mx-4'>...</div>
+
+        <div className="inline-flex items-center justify-center whitespace-nowrap 
+        text-[15px] leading-none font-bold text-white bg-[#FF6314] 
+        px-4 h-8 rounded-full shadow-sm shadow-black/30">
           {`${activeCount} ${activeCount === 1 ? 'tab' : 'tabs'}`}
         </div>
       </div>
@@ -76,7 +78,8 @@ export default function App() {
       <MediaCard />
 
       {/* tree */}
-      <div className="flex-1 min-h-0 flex flex-col pr-1 my-1 px-2">
+      {/* add padding after fixing alignment here */}
+      <div className="flex-1 min-h-0 flex flex-col">
         {/* Scrollable list area */}
         <div ref={treeContainerRef} className="flex-1 overflow-y-auto no-scrollbar">
           {!rootIDs || rootIDs.length === 0 ? (
@@ -92,30 +95,30 @@ export default function App() {
               </button>
             </div>
           ) : (
-            
+            // case: there are active tabs
             // tab nodes
             <div className="flex flex-col gap-2">
               {rootIDs.map((rootID) => (
                 <TreeNode key={rootID} nodeID={rootID} depth={0} />
               ))}
             </div>
-          
+
           )}
 
-        {/* new tab button */}
-        <button
-          onClick={createNewTab}
-          className="flex items-center gap-2.5 h-12 w-full px-2 py-1.5 mt-1 rounded-3xl 
+          {/* new tab button */}
+          <button
+            onClick={createNewTab}
+            className="flex items-center gap-2.5 h-12 w-full px-2 py-1.5 mt-1 rounded-3xl 
           text-gray-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer 
           group justify-center items-center border-2 border-white-100 shrink-0 mt-4">
-          <div className="w-5 h-5 flex items-center justify-center text-gray-400 group-hover:text-gray-300 transition-colors">
-            <span className="text-lg font-bold leading-none">+</span>
-          </div>
-          <span className="text-xs font-medium">New tab</span>
-        </button>
-      </div>
+            <div className="w-5 h-5 flex items-center justify-center text-gray-400 group-hover:text-gray-300 transition-colors">
+              <span className="text-lg font-bold leading-none">+</span>
+            </div>
+            <span className="text-xs font-medium">New tab</span>
+          </button>
+        </div>
 
-        
+
       </div>
 
       {/* footer */}
