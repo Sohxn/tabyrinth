@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { useTreeStore } from "@/src/store/useTreeStore";
+import { getAccentColorFromURL } from "@/src/utils/mediaColors";
+
 
 export function MediaCard() {
   const activeMediaTabID = useTreeStore((state) => state.activeMediaTabID);
   const nodes = useTreeStore((state) => state.nodes);
-  const [accentColor, setAccentColor] = useState('#ffffff')
   // special media node
   const mediaNode = activeMediaTabID ? nodes[activeMediaTabID] : null;
 
@@ -21,27 +22,33 @@ export function MediaCard() {
     await chrome.tabs.update(Number(mediaNode.id), { muted: !tab.mutedInfo?.muted });
   };
 
+  const accentColor = getAccentColorFromURL(mediaNode.url);
+
   return (
     // source aware media card
     <div onClick={handleFocusMediaTab}
+      style={{
+        borderColor: accentColor,
+        backgroundColor: `${accentColor}12`
+      }}
       className="mx-1 h-20 mb-3 p-2 flex items-center 
-            gap-2 rounded-3xl bg-black border border-red-400 
+            gap-2 rounded-3xl bg-black border 
             backdrop-blur-md cursor-pointer 
-            hover:border-red-500 transition-all 
+            transition-all 
             shadow-lg group">
 
       {/* visualizer */}
       <div className="flex items-end gap-[2px] h-3.5 w-3.5 shrink-0 ml-1">
-        <span className="w-1 bg-red-400 animate-bounce h-full rounded-full" />
-        <span className="w-1 bg-red-400 animate-bounce h-2/3 rounded-full [animation-delay:0.2s]" />
-        <span className="w-1 bg-red-400 animate-bounce h-4/5 rounded-full [animation-delay:0.4s]" />
+        <span style={{ backgroundColor: accentColor }} className="w-1 animate-bounce h-full rounded-full" />
+        <span style={{ backgroundColor: accentColor }} className="w-1 animate-bounce h-2/3 rounded-full [animation-delay:0.2s]" />
+        <span style={{ backgroundColor: accentColor }} className="w-1 animate-bounce h-4/5 rounded-full [animation-delay:0.4s]" />
       </div>
 
       {/* Favicon */}
       {mediaNode.favIconURL ? (
         <img src={mediaNode.favIconURL} alt="" className="w-4 h-4 rounded shrink-0" />
       ) : (
-        <div className="w-4 h-4 rounded bg-red-800/50 shrink-0" />
+        <div className="w-4 h-4 rounded bg-gray-300 shrink-0" />
       )}
 
       {/* Title */}
@@ -52,7 +59,7 @@ export function MediaCard() {
       {/* Mute Button */}
       <button
         onClick={handleMuteMediaTab}
-        className="p-1 rounded-md hover:bg-white/10 text-red-300 hover:text-white transition-colors shrink-0"
+        className="p-1 rounded-md hover:bg-white/10 text-gray-300 hover:text-white transition-colors shrink-0"
         title="Mute / Unmute Tab"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

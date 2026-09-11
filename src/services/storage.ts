@@ -5,6 +5,7 @@ const InitState: TreeStorageSchema = {
   rootIDs: [],
   lastActiveTabID: null,
   activeMediaTabID: null,
+  activeMediaAccentColor: '#ffffff',
   isPro: false,
 };
 
@@ -130,6 +131,7 @@ export const StorageService = {
       const state = (data.tabTreeData as TreeStorageSchema) || InitState;
       const existing = state.nodes[node.id];
 
+      //solved race condition
       const updatedNodes: Record<string | number, TabNode> = {
         ...state.nodes,
         [node.id]: existing ? {

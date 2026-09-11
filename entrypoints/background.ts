@@ -1,6 +1,7 @@
 import { defineBackground } from "#imports";
 import { StorageService } from "@/src/services/storage";
 import { type TabNode } from "@/src/types";
+import { getAccentColorFromURL } from "@/src/utils/mediaColors";
 
 // not the best 
 const RESOURCE_ID_KEYS = new Set([
@@ -51,16 +52,30 @@ async function reconcileMediaState() {
   const audibleTabs = await chrome.tabs.query({ audible: true });
   const currentlyTracked = state.activeMediaTabID;
 
-  const stillAudible = currentlyTracked !== null &&
-    audibleTabs.some((t) => t.id === currentlyTracked);
+  const stillAudible = audibleTabs.find((t) => t.id === currentlyTracked);
 
   if (!stillAudible) {
-    const next = audibleTabs.length > 0 ? audibleTabs[0]?.id ?? null : null;
-    if (next !== currentlyTracked) {
-      await StorageService.setActiveMediaTab(next);
+    const nextTab = audibleTabs.length > 0 ? audibleTabs[0] : null;
+    const nextTabID = nextTab?.id ?? null;
+    // if (next !== currentlyTracked) {
+    //   await StorageService.setActiveMediaTab(next);
+    // }
+    const nextAccentColor = nextTab ? getAccentColorFromURL(nextTab.url) : null;
+
+    await StorageService.set({
+      activeMediaTabID: nextTabID,
+      activeMediaAccentColor: nextAccentColor
+    });
+  } else {
+    const currentColor = getAccentColorFromURL(stillAudible.url);
+    if (state.activeMediaAccentColor !== currentColor) {
+      await StorageService.set({
+        activeMediaAccentColor: currentColor,
+      });
     }
   }
 }
+
 
 export default defineBackground(() => {
   chrome.sidePanel.setPanelBehavior({

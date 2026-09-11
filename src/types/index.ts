@@ -2,7 +2,7 @@ export interface TabNode {
     id: string | number;
     title: string;
     url: string;
-    parentID: string | number | null; 
+    parentID: string | number | null;
     windowID: number;
     favIconURL?: string;
     isHistoryNode?: boolean;
@@ -25,11 +25,12 @@ export interface TabNote {
 }
 
 // changes in state -> changes in:
-export interface TreeStorageSchema{
+export interface TreeStorageSchema {
     nodes: Record<string | number, TabNode>;
     rootIDs: (string | number)[];
     lastActiveTabID: number | null;
     activeMediaTabID: string | number | null;
+    activeMediaAccentColor: string | null;
     // subscription status (preferibly use in another type for user)
     isPro: boolean;
 }
