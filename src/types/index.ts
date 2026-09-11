@@ -13,7 +13,6 @@ export interface TabNode {
     closedAt?: number;
     // util
     notes?: TabNote[];
-
 }
 
 // for per tab notes
