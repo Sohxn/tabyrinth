@@ -1,4 +1,4 @@
-import { type TreeStorageSchema, type TabNode, type TabNote} from "../types";
+import { type TreeStorageSchema, type TabNode, type TabNote } from "../types";
 
 const InitState: TreeStorageSchema = {
   nodes: {},
@@ -105,7 +105,7 @@ export const StorageService = {
       const data = await chrome.storage.local.get("tabTreeData");
       const state = (data.tabTreeData as TreeStorageSchema) || InitState;
       const target = state.nodes[tabID];
-      if(!target) return;
+      if (!target) return;
 
       const updatedNodes = {
         ...state.nodes,
@@ -114,7 +114,7 @@ export const StorageService = {
           ...updates,
         },
       };
-      
+
       await chrome.storage.local.set({
         tabTreeData: {
           ...state,
@@ -128,10 +128,19 @@ export const StorageService = {
     return enqueue(async () => {
       const data = await chrome.storage.local.get("tabTreeData");
       const state = (data.tabTreeData as TreeStorageSchema) || InitState;
+      const existing = state.nodes[node.id];
 
       const updatedNodes: Record<string | number, TabNode> = {
         ...state.nodes,
-        [node.id]: { ...node, childrenIDs: node.childrenIDs ?? [] },
+        [node.id]: existing ? {
+          ...existing,
+          ...node,
+          parentID: node.parentID !== null && node.parentID !== undefined ? node.parentID : existing.parentID,
+          childrenIDs: node.childrenIDs && node.childrenIDs.length > 0 ? node.childrenIDs : existing.childrenIDs,
+        } : {
+          ...node,
+          childrenIDs: node.childrenIDs ?? []
+        },
       };
 
       if (node.parentID !== null && node.parentID !== undefined) {
@@ -186,10 +195,11 @@ export const StorageService = {
       // fresh
       const freshNodes: Record<string | number, TabNode> = {};
 
-      for(const tab of openTabs){
-        if(!tab.id) continue;
+      for (const tab of openTabs) {
+        if (!tab.id) continue;
         const existing = state.nodes[tab.id];
 
+        // check isLoading once
         freshNodes[tab.id] = {
           id: tab.id,
           title: tab.title || existing?.title || 'New Tab',
@@ -198,11 +208,12 @@ export const StorageService = {
           windowID: tab.windowId,
           favIconURL: tab.favIconUrl || existing?.favIconURL,
           isClosed: false,
-          childrenIDs: [], 
+          isLoading: tab.status === 'loading',
+          childrenIDs: [],
         };
       }
 
-      const {nodes: sanitizedNodes, rootIDs: sanitizedRoots} = sanitizeTree(freshNodes);
+      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots } = sanitizeTree(freshNodes);
 
       await chrome.storage.local.set({
         tabTreeData: {
@@ -242,11 +253,13 @@ export const StorageService = {
     });
   },
 
-  async reopenNode(nodeId: string | number): Promise<void> {
+
+  // restore old tree and reopen ghost node
+  async reopenNode(oldNodeID: string | number): Promise<void> {
     return enqueue(async () => {
       const data = await chrome.storage.local.get("tabTreeData");
       const state = (data.tabTreeData as TreeStorageSchema) || InitState;
-      const oldNode = state.nodes[nodeId];
+      const oldNode = state.nodes[oldNodeID];
 
       if (!oldNode) return;
 
@@ -254,52 +267,59 @@ export const StorageService = {
       const newTab = await chrome.tabs.create({ url: oldNode.url, active: true });
       if (!newTab.id) return;
 
-      //remove old closed ID key
-      delete state.nodes[nodeId];
-
-      //create updated node under new Chrome Tab ID
-      const revivedNode: TabNode = {
-        ...oldNode,
-        id: newTab.id,
-        windowID: newTab.windowId,
-        isClosed: false,
+      const newID = newTab.id;
+      const updatedNodes = {
+        ...state.nodes
       };
 
-      state.nodes[newTab.id] = revivedNode;
+      //build revived tab node and remove old ghost node key 
+      // (only if tabID changes)
+      const revivedNode: TabNode = {
+        ...oldNode,
+        id: newID,
+        isClosed: false,
+        windowID: newTab.windowId,
+        favIconURL: newTab.favIconUrl || oldNode.favIconURL,
+        title: newTab.title || oldNode.title
+      };
 
-      //update parent references to point to the new ID
-      if (revivedNode.parentID !== null && state.nodes[revivedNode.parentID]) {
-        const parent = state.nodes[revivedNode.parentID];
-        if(parent){
-          parent.childrenIDs = parent.childrenIDs.map((id) => String(id) === String(nodeId) ? newTab.id! : id);
+      if (oldNodeID !== newID) {
+        delete updatedNodes[oldNodeID];
+      }
+      updatedNodes[newID] = revivedNode;
+
+      if (oldNode.parentID !== null && oldNode.parentID !== undefined && updatedNodes[oldNode.parentID]) {
+        const parent = updatedNodes[oldNode.parentID];
+        if (parent) {
+          updatedNodes[oldNode.parentID] = {
+            ...parent,
+            childrenIDs: parent.childrenIDs.map((id) => (id === oldNodeID ? newID : id)),
+          };
         }
       }
 
-      //update children pointers to point to the new parent ID
-      revivedNode.childrenIDs.forEach((childId) => {
-        if (state.nodes[childId]) {
-          state.nodes[childId].parentID = newTab.id!;
-        }
-      });
+      let updatedRoots = [
+        ...state.rootIDs
+      ];
 
-      //Update root list if it was a root
-      state.rootIDs = state.rootIDs.map((id) => (id === nodeId ? newTab.id! : id));
-
-      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots } = sanitizeTree(state.nodes);
+      if (updatedRoots.includes(oldNodeID)) {
+        updatedRoots = updatedRoots.map((id) => (id === oldNodeID ? newID : id));
+      }
 
       await chrome.storage.local.set({
         tabTreeData: {
           ...state,
-          nodes: sanitizedNodes,
-          rootIDs: sanitizedRoots,
-        },
+          nodes: updatedNodes,
+          rootIDs: updatedRoots,
+          lastActiveTabID: newID
+        }
       });
     });
   },
 
   async setActiveMediaTab(tabID: string | number | null): Promise<void> {
     await this.transaction((state) => ({
-        activeMediaTabID: tabID,
+      activeMediaTabID: tabID,
     }));
   },
 
@@ -310,10 +330,10 @@ export const StorageService = {
       const data = await chrome.storage.local.get('tabTreeData');
       const state = (data.tabTreeData as TreeStorageSchema) || InitState;
       const target = state.nodes[tabID];
-      if(!target) return;
+      if (!target) return;
 
       const newNote: TabNote = {
-        id:  `note_${Date.now()}_${Math.random().toString(36).substring(2,6)}`,
+        id: `note_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         content: content.trim(),
         createdAt: Date.now(),
         sourceURL: sourceURL
@@ -347,7 +367,7 @@ export const StorageService = {
       const data = await chrome.storage.local.get('tabTreeData');
       const state = (data.tabTreeData as TreeStorageSchema) || InitState;
       const target = state.nodes[tabID];
-      if(!target || !target.notes) return;
+      if (!target || !target.notes) return;
 
       const updatedNodes = {
         ...state.nodes,

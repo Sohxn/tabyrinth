@@ -139,6 +139,9 @@ export default defineBackground(() => {
   chrome.tabs.onCreated.addListener(async (tab) => {
     if (!tab.id) return;
 
+    const state = await StorageService.get();
+    if (state.nodes[tab.id]) return;
+
     const targetURL = tab.url || tab.pendingUrl || 'chrome://newtab/'
     const isNewTab = targetURL.includes('chrome://newtab') || targetURL.includes('about:blank') || targetURL === '';
     const rawParentID = tab.openerTabId ?? null;
@@ -146,7 +149,7 @@ export default defineBackground(() => {
     const newTabNode: TabNode = {
       id: tab.id,
       title: tab.title || 'New Tab',
-      url: tab.url || tab.pendingUrl || 'chrome://newtab/',
+      url: targetURL,
       parentID: isNewTab || rawParentID == tab.id ? null : rawParentID,
       windowID: tab.windowId,
       favIconURL: tab.favIconUrl,

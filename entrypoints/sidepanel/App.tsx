@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTreeStore } from '../../src/store/useTreeStore';
 import { TreeNode } from './TreeNode';
 import { type TreeStorageSchema } from '@/src/types';
@@ -8,6 +8,7 @@ import { MediaCard } from './MediaCard';
 export default function App() {
   const { rootIDs, init, syncFromStorage, nodes } = useTreeStore();
   const treeContainerRef = useRef<HTMLDivElement>(null);
+  const [isResettingGhosts, SetIsResettingGhosts] = useState(false);
 
   useEffect(() => {
     if (treeContainerRef.current) {
@@ -53,9 +54,13 @@ export default function App() {
   const createNewTab = async () => {
     await chrome.tabs.create({});
   }
-  // reset button function
+  // added animation
   const resetTree = async () => {
-    await StorageService.resetToActiveTabsOnly();
+    SetIsResettingGhosts(true);
+    setTimeout(async () => {
+      await StorageService.resetToActiveTabsOnly();
+      SetIsResettingGhosts(false);
+    }, 300);
   }
 
   return (
@@ -97,9 +102,9 @@ export default function App() {
           ) : (
             // case: there are active tabs
             // tab nodes
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1">
               {rootIDs.map((rootID) => (
-                <TreeNode key={rootID} nodeID={rootID} depth={0} />
+                <TreeNode key={rootID} nodeID={rootID} depth={0} isResettingGhosts={isResettingGhosts} />
               ))}
             </div>
 

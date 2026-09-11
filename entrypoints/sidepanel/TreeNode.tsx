@@ -2,11 +2,12 @@ import React, { type SyntheticEvent } from 'react';
 import { useTreeStore } from '../../src/store/useTreeStore';
 import { StorageService } from '@/src/services/storage';
 import { type TabNode } from '@/src/types';
-import { PencilCircleIcon, PencilSimpleIcon } from '@phosphor-icons/react';
+import { PencilSimpleIcon } from '@phosphor-icons/react';
 
 interface TreeNodeProps {
   nodeID: string | number;
   depth: number;
+  isResettingGhosts?: boolean;
 }
 
 //finds the deepest leaf in a subtree
@@ -40,7 +41,7 @@ function getChainLength(node: TabNode, nodes: Record<string | number, TabNode>):
   return length;
 }
 
-export function TreeNode({ nodeID, depth }: TreeNodeProps) {
+export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeProps) {
   const node = useTreeStore((state) => state.nodes[nodeID]);
   const nodes = useTreeStore((state) => state.nodes);
   const expandedNodes = useTreeStore((state) => state.expandedNodeIDs);
@@ -50,10 +51,11 @@ export function TreeNode({ nodeID, depth }: TreeNodeProps) {
   const focusTab = useTreeStore((state) => state.focusTab);
   const closeTab = useTreeStore((state) => state.closeTab);
   const lastActiveTabID = useTreeStore((state) => state.lastActiveTabID);
+
   const [showNotes, setShowNotes] = useState(false);
   const [newNoteInput, setNewNoteInput] = useState('');
   const [isHovered, setIsHovered] = useState(false);
-
+  const [isClosing, setIsClosing] = useState(false);
 
 
 
@@ -70,6 +72,8 @@ export function TreeNode({ nodeID, depth }: TreeNodeProps) {
   // notes related
   const notesCount = node.notes?.length ?? 0;
 
+  // animation related
+  const isSlidingOut = isClosing || (node.isClosed && isResettingGhosts)
 
   // if depth exceeds 5 collapse to stacked tabs
   const exceedsDepthLimit = depth >= 5;
@@ -77,6 +81,14 @@ export function TreeNode({ nodeID, depth }: TreeNodeProps) {
 
   const { leaf: leafNode, hiddenCount } = shouldCollapseStack ?
     getDeepestLeafNode(node, nodes) : { leaf: null, hiddenCount: 0 };
+
+  const handleCloseClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsClosing(true);
+    setTimeout(() => {
+      closeTab(node.id);
+    }, 300);
+  }
 
   // reopen closed tabs (history)
   const handleTabClick = async (e: React.MouseEvent) => {
@@ -100,7 +112,9 @@ export function TreeNode({ nodeID, depth }: TreeNodeProps) {
 
 
   return (
-    <div className="relative flex-col">
+    <div className={`relative flex-col
+    transition-all duration-300 ease-in-out transform 
+    ${isSlidingOut ? 'translate-x-full opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}`}>
       {depth > 0 && !shouldCollapseStack && (
         <div
           className="absolute top-0 bottom-15 border-l border-gray-500"
@@ -308,7 +322,7 @@ export function TreeNode({ nodeID, depth }: TreeNodeProps) {
         ) : (
           <div className="flex flex-col transition-all duration-300 ease-in-out">
             {node.childrenIDs.map((childID) => (
-              <TreeNode key={childID} nodeID={childID} depth={depth + 1} />
+              <TreeNode key={childID} nodeID={childID} depth={depth + 1} isResettingGhosts={isResettingGhosts} />
             ))}
           </div>
         )
