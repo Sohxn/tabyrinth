@@ -1,8 +1,17 @@
-import {create} from 'zustand';
+import { create } from 'zustand';
 import { StorageService } from '../services/storage';
-import { type TabNode, type TreeStorageSchema } from '../types';
+import { type TabNode, type TreeStorageSchema, type Workspace } from '../types';
+
+const DEFAULT_WORKSPACE: Workspace = {
+    id: 'workspace-default',
+    name: 'untitled',
+    isDefault: true
+};
 
 interface TreeStoreState {
+    workspaces: Workspace[];
+    activeWorkspaceID: string;
+
     nodes: Record<string | number, TabNode>;
     rootIDs: (string | number)[];
     lastActiveTabID: number | null;
@@ -16,16 +25,24 @@ interface TreeStoreState {
 
     init: () => Promise<void>;
     syncFromStorage: (schema: TreeStorageSchema) => void;
-    toggleExpand: (nodeID:string | number) => void;
+    toggleExpand: (nodeID: string | number) => void;
     toggleStackExpand: (nodeID: string | number) => void;
     setSearchQuery: (query: string) => void;
     focusTab: (tabID: string | number) => Promise<void>;
     closeTab: (tabID: string | number) => Promise<void>;
     setActiveMediaTabID: (nodeID: string | number | null) => void;
     focusMediaTab: () => Promise<void>;
+
+    //workspace
+    createWorkspace: (name: string) => string;
+    assignTabToWorkspace: (nodeID: string, workspaceID: string) => void;
+    getTabsByWorkspace: (workspaceID: string) => (string | number)[];
 }
 
 export const useTreeStore = create<TreeStoreState>()((set, get) => ({
+    workspaces: [DEFAULT_WORKSPACE],
+    activeWorkspaceID: DEFAULT_WORKSPACE.id,
+
     nodes: {},
     rootIDs: [],
     lastActiveTabID: null,
@@ -35,7 +52,7 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
     searchQuery: '',
     activeMediaTabID: null,
 
-    init: async() => {
+    init: async () => {
         const data = await StorageService.get();
         get().syncFromStorage(data);
     },
@@ -43,10 +60,10 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
     syncFromStorage: (schema) => {
         set((state) => {
             // auto expand newly discovered parent nodes
-            const nextExpanded = {...state.expandedNodeIDs};
+            const nextExpanded = { ...state.expandedNodeIDs };
             // added a safe fallback with {}
             Object.values(schema.nodes || {}).forEach((node) => {
-                if(node.childrenIDs.length > 0 && nextExpanded[node.id] === undefined){
+                if (node.childrenIDs.length > 0 && nextExpanded[node.id] === undefined) {
                     nextExpanded[node.id] = true;
                 }
             });
@@ -87,28 +104,28 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
     },
 
     // switch tabs according to where the user clicks on the sidepanel
-    focusTab: async(tabID) =>  {
+    focusTab: async (tabID) => {
         const node = get().nodes[tabID];
-        if(!node || node.isClosed || typeof(tabID) == 'string') return;
+        if (!node || node.isClosed || typeof (tabID) == 'string') return;
 
-        try{
-            await chrome.tabs.update(tabID, {active: true});
-            await chrome.windows.update(node.windowID, {focused: true});
-        } catch(err) {
+        try {
+            await chrome.tabs.update(tabID, { active: true });
+            await chrome.windows.update(node.windowID, { focused: true });
+        } catch (err) {
             console.error('[LOG] Failed to focus tab: ', err);
         }
     },
 
-    closeTab: async(tabID) => {
+    closeTab: async (tabID) => {
         const numericID = typeof tabID === 'number' ? tabID : parseInt(tabID, 10);
-        if(isNaN(numericID)){
+        if (isNaN(numericID)) {
             await StorageService.markNodeClosed(tabID);
             return;
         }
-        
-        try{
+
+        try {
             await chrome.tabs.remove(numericID);
-        }catch(err){
+        } catch (err) {
             console.error("[LOG] failed to close tab: ", err);
             await StorageService.markNodeClosed(tabID);
         }
@@ -116,12 +133,56 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
 
     focusMediaTab: async () => {
         const mediaID = get().activeMediaTabID;
-        if(mediaID !== null){
+        if (mediaID !== null) {
             await get().focusTab(mediaID);
         }
     },
 
     setActiveMediaTabID: (nodeID) => {
-        set({activeMediaTabID: nodeID});
-    }
+        set({ activeMediaTabID: nodeID });
+    },
+
+    createWorkspace: (name: string) => {
+        const newspace: Workspace = {
+            id: `workspace-${Date.now()}`,
+            name: name.trim() || `untitled-${Date.now()}`,
+        };
+
+        set((state) => ({
+            workspaces: [
+                ...state.workspaces,
+                newspace
+            ],
+        }));
+
+        return newspace.id;
+    },
+
+    assignTabToWorkspace: (nodeID: string, workspaceID: string) => {
+        set((state) => {
+            const targetTab = state.nodes[nodeID];
+            if (!targetTab) return state;
+
+            return {
+                nodes: {
+                    ...state.nodes,
+                    [nodeID]: {
+                        ...targetTab,
+                        workspaceID
+                    }
+                }
+            }
+        });
+    },
+
+    getTabsByWorkspace: (workspaceID: string) => {
+        const { rootIDs, nodes } = get();
+        return rootIDs.filter((id) => {
+            const node = nodes[id];
+            if (!node) return false;
+
+            const tabWorkspace = node.workspaceID || DEFAULT_WORKSPACE.id;
+            return tabWorkspace === workspaceID;
+        });
+    },
 }));

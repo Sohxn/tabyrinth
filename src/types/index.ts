@@ -13,6 +13,8 @@ export interface TabNode {
     closedAt?: number;
     // util
     notes?: TabNote[];
+    // grouping
+    workspaceID: string;
 }
 
 // for per tab notes
@@ -34,5 +36,12 @@ export interface TreeStorageSchema {
     isPro: boolean;
 }
 
+// grouping, exporting
+export interface Workspace {
+    id: string;
+    name: string;
+    color?: string;
+    isDefault?: boolean;
+}
 
 
