@@ -79,6 +79,11 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
   const exceedsDepthLimit = depth >= 5;
   const shouldCollapseStack = (exceedsDepthLimit || chainLength >= STACK_THRESHOLD) && !isStackExpanded;
 
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+    e.dataTransfer.setData('text/plain', String(nodeID));
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
   const { leaf: leafNode, hiddenCount } = shouldCollapseStack ?
     getDeepestLeafNode(node, nodes) : { leaf: null, hiddenCount: 0 };
 
@@ -112,7 +117,9 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
 
 
   return (
-    <div className={`relative flex-col
+    <div draggable={depth === 0}
+      onDragStart={handleDragStart}
+      className={`relative flex-col
     transition-all duration-300 ease-in-out transform 
     ${isSlidingOut ? 'translate-x-full opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}`}>
       {depth > 0 && !shouldCollapseStack && (

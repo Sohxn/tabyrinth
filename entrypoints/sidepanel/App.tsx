@@ -4,17 +4,20 @@ import { TreeNode } from './TreeNode';
 import { type TreeStorageSchema } from '@/src/types';
 import { StorageService } from '@/src/services/storage';
 import { MediaCard } from './MediaCard';
+import { WorkspaceNotch } from './WorkspaceNotch';
 
 export default function App() {
-  const { rootIDs, init, syncFromStorage, nodes } = useTreeStore();
+  const { rootIDs, init, syncFromStorage, nodes, activeWorkspaceID, getTabsByWorkspace } = useTreeStore();
   const treeContainerRef = useRef<HTMLDivElement>(null);
   const [isResettingGhosts, SetIsResettingGhosts] = useState(false);
+
+  const workspaceTabIDs = getTabsByWorkspace(activeWorkspaceID);
 
   useEffect(() => {
     if (treeContainerRef.current) {
       treeContainerRef.current.scrollTop = treeContainerRef.current.scrollHeight;
     }
-  }, [rootIDs]);
+  }, [workspaceTabIDs]);
 
   useEffect(() => {
     const port = chrome.runtime.connect({
@@ -70,7 +73,8 @@ export default function App() {
       <div className="flex items-center justify-between px-2 h-16">
         <div className="font-logo text-lg text-gray-200">Tabyrinth</div>
 
-        <div className='flex items-center justify-center rounded-3xl h-10 w-full max-w-xs bg-black mx-4'>...</div>
+        {/* <div className='flex items-center justify-center rounded-3xl h-10 w-full max-w-xs bg-black mx-4'>...</div> */}
+        <WorkspaceNotch />
 
         <div className="inline-flex items-center justify-center whitespace-nowrap 
         text-[15px] leading-none font-bold text-white bg-[#FF6314] 
