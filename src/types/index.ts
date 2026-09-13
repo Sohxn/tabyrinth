@@ -47,4 +47,12 @@ export interface Workspace {
     isDefault?: boolean;
 }
 
+// sync
+export interface SyncPayload {
+    updatedAt: number;
+    activeWorkspaceID: string;
+    workspaces: Workspace[];
+    nodes: Record<string | number, TabNode>;
+    rootIDs: (string | number)[];
+}
 
