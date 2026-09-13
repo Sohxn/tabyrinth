@@ -37,6 +37,7 @@ interface TreeStoreState {
     createWorkspace: (name: string) => string;
     assignTabToWorkspace: (nodeID: string, workspaceID: string) => void;
     getTabsByWorkspace: (workspaceID: string) => (string | number)[];
+    setActiveWorkspace: (workspaceID: string) => Promise<void>;
 }
 
 export const useTreeStore = create<TreeStoreState>()((set, get) => ({
@@ -75,6 +76,8 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
                 isPro: schema.isPro,
                 expandedNodeIDs: nextExpanded,
                 activeMediaTabID: schema.activeMediaTabID ?? null,
+                workspaces: schema.workspaces && schema.workspaces.length > 0 ? schema.workspaces : state.workspaces,
+                activeWorkspaceID: schema.activeWorkspaceID || state.activeWorkspaceID
             }
         })
     },
@@ -148,12 +151,21 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
             name: name.trim() || `untitled-${Date.now()}`,
         };
 
+        const updatedWorkspaces = [
+            ...get().workspaces,
+            newspace
+        ];
+
         set((state) => ({
             workspaces: [
                 ...state.workspaces,
                 newspace
             ],
         }));
+
+        StorageService.set({
+            workspaces: updatedWorkspaces
+        });
 
         return newspace.id;
     },
@@ -163,14 +175,20 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
             const targetTab = state.nodes[nodeID];
             if (!targetTab) return state;
 
-            return {
-                nodes: {
-                    ...state.nodes,
-                    [nodeID]: {
-                        ...targetTab,
-                        workspaceID
-                    }
+            const updatedNodes = {
+                ...state.nodes,
+                [nodeID]: {
+                    ...targetTab,
+                    workspaceID
                 }
+            }
+
+            StorageService.set({
+                nodes: updatedNodes
+            });
+
+            return {
+                nodes: updatedNodes
             }
         });
     },
@@ -185,4 +203,13 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
             return tabWorkspace === workspaceID;
         });
     },
+
+    setActiveWorkspace: async (workspaceID: string) => {
+        set({
+            activeWorkspaceID: workspaceID
+        });
+        await StorageService.set({
+            activeWorkspaceID: workspaceID
+        })
+    }
 }));

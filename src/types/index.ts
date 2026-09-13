@@ -34,6 +34,9 @@ export interface TreeStorageSchema {
     activeMediaAccentColor: string | null;
     // subscription status (preferibly use in another type for user)
     isPro: boolean;
+    // workspace persistence
+    activeWorkspaceID: string;
+    workspaces?: Workspace[];
 }
 
 // grouping, exporting

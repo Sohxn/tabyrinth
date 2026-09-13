@@ -6,8 +6,9 @@ import { StorageService } from '@/src/services/storage';
 import { MediaCard } from './MediaCard';
 import { WorkspaceNotch } from './WorkspaceNotch';
 
+
 export default function App() {
-  const { rootIDs, init, syncFromStorage, nodes, activeWorkspaceID, getTabsByWorkspace } = useTreeStore();
+  const { rootIDs, init, syncFromStorage, nodes, activeWorkspaceID, getTabsByWorkspace, assignTabToWorkspace } = useTreeStore();
   const treeContainerRef = useRef<HTMLDivElement>(null);
   const [isResettingGhosts, SetIsResettingGhosts] = useState(false);
 
@@ -55,7 +56,10 @@ export default function App() {
 
   // create new tab
   const createNewTab = async () => {
-    await chrome.tabs.create({});
+    const newTab = await chrome.tabs.create({});
+    if (newTab.id) {
+      assignTabToWorkspace(String(newTab.id), activeWorkspaceID);
+    }
   }
   // added animation
   const resetTree = async () => {
@@ -91,27 +95,16 @@ export default function App() {
       <div className="flex-1 min-h-0 flex flex-col">
         {/* Scrollable list area */}
         <div ref={treeContainerRef} className="flex-1 overflow-y-auto no-scrollbar">
-          {!rootIDs || rootIDs.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 mt-10">
-              <p className="text-gray-500 italic text-center">No active tabs</p>
-              <button
-                onClick={createNewTab}
-                className="flex items-center gap-2 px-3 py-1.5 
-                rounded-full bg-white/10 hover:bg-white/20 text-gray-200 
-                transition-all cursor-pointer">
-                <span className="font-bold text-sm">+</span>
-                <span>New Tab</span>
-              </button>
+          {!workspaceTabIDs || workspaceTabIDs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center m-2">
+              <p className="text-gray-400 font-bold text-lg text-center">No active tabs in this group</p>
             </div>
           ) : (
-            // case: there are active tabs
-            // tab nodes
             <div className="flex flex-col gap-1">
-              {rootIDs.map((rootID) => (
+              {workspaceTabIDs.map((rootID) => (
                 <TreeNode key={rootID} nodeID={rootID} depth={0} isResettingGhosts={isResettingGhosts} />
               ))}
             </div>
-
           )}
 
           {/* new tab button */}

@@ -7,6 +7,12 @@ const InitState: TreeStorageSchema = {
   activeMediaTabID: null,
   activeMediaAccentColor: '#ffffff',
   isPro: false,
+  activeWorkspaceID: 'workspace-default',
+  workspaces: [{
+    id: 'workspace-default',
+    name: 'untitled',
+    isDefault: true
+  }]
 };
 
 let storageQueue: Promise<any> = Promise.resolve();
@@ -131,16 +137,21 @@ export const StorageService = {
       const state = (data.tabTreeData as TreeStorageSchema) || InitState;
       const existing = state.nodes[node.id];
 
+      const parentNode = node.parentID ? state.nodes[node.parentID] : null;
+      const assignedWorkspace = node.workspaceID || parentNode?.workspaceID || state.activeWorkspaceID || 'workspace-default';
+
       //solved race condition
       const updatedNodes: Record<string | number, TabNode> = {
         ...state.nodes,
         [node.id]: existing ? {
           ...existing,
           ...node,
+          workspaceID: existing.workspaceID || assignedWorkspace,
           parentID: node.parentID !== null && node.parentID !== undefined ? node.parentID : existing.parentID,
           childrenIDs: node.childrenIDs && node.childrenIDs.length > 0 ? node.childrenIDs : existing.childrenIDs,
         } : {
           ...node,
+          workspaceID: assignedWorkspace,
           childrenIDs: node.childrenIDs ?? []
         },
       };
@@ -196,6 +207,7 @@ export const StorageService = {
       const state = (data.tabTreeData as TreeStorageSchema) || InitState;
       // fresh
       const freshNodes: Record<string | number, TabNode> = {};
+      const assignedWorkspace = state.activeWorkspaceID || 'workspace-default';
 
       for (const tab of openTabs) {
         if (!tab.id) continue;
@@ -212,6 +224,7 @@ export const StorageService = {
           isClosed: false,
           isLoading: tab.status === 'loading',
           childrenIDs: [],
+          workspaceID: existing?.workspaceID || assignedWorkspace
         };
       }
 

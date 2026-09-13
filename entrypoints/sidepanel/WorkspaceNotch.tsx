@@ -6,11 +6,12 @@ import { WScolors } from "@/src/colors/colors";
 
 export function WorkspaceNotch() {
     const workspaces = useTreeStore((state) => state.workspaces);
-    const activeWorkspaceID = useTreeStore((state) => state.activeMediaTabID);
+    const activeWorkspaceID = useTreeStore((state) => state.activeWorkspaceID);
     // methods
     const createWorkspace = useTreeStore((state) => state.createWorkspace);
     const assignTab2workspace = useTreeStore((state) => state.assignTabToWorkspace);
     const getTabsByWorkspace = useTreeStore((state) => state.getTabsByWorkspace);
+    const setActiveWorkspace = useTreeStore((state) => state.setActiveWorkspace);
 
     const [isExpanded, setIsExpanded] = useState(false);
     const [showCreateForm, setShowCreateForm] = useState(false);
@@ -23,6 +24,7 @@ export function WorkspaceNotch() {
         useTreeStore.setState({
             activeWorkspaceID: id
         });
+        setActiveWorkspace(id);
         setIsExpanded(false);
     };
 
@@ -49,6 +51,7 @@ export function WorkspaceNotch() {
         useTreeStore.setState({
             activeWorkspaceID: newID,
         });
+        setActiveWorkspace(newID);
         setWorkspaceName('');
         setShowCreateForm(false);
         setIsExpanded(false);
