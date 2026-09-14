@@ -305,6 +305,4 @@ export default defineBackground(() => {
       await StorageService.setActiveMediaTab(nextTabId);
     }
   });
-
-
 });

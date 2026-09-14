@@ -3,6 +3,8 @@ import { URLs } from "../requestURLs/urls";
 
 const WURL = URLs['prod'];
 
+let pushTimer: ReturnType<typeof setTimeout> | null = null;
+
 export async function getDeviceID(): Promise<string> {
     const result = await chrome.storage.local.get("deviceId");
     if (typeof result.deviceId === "string") {
@@ -60,9 +62,9 @@ export async function activateLicenseKey(rawKey: string): Promise<{
     }
 }
 
-export async function pushSync(payload: SyncPayload): Promise<boolean> {
+export async function pushSync(payload: SyncPayload): Promise<{ success: boolean; locked?: boolean }> {
     const lk = await getLicenseKey();
-    if (!lk) return false;
+    if (!lk) return { success: false };
 
     try {
         const deviceID = await getDeviceID();
@@ -75,16 +77,28 @@ export async function pushSync(payload: SyncPayload): Promise<boolean> {
             },
             body: JSON.stringify(payload),
         });
-        return response.ok;
+
+        if (response.status === 429) {
+            console.warn("Sync temporarily locked: Another active session in progress.");
+
+            return { success: false, locked: true };
+        }
+
+        if (response.status === 403 || response.status === 401) {
+            await chrome.storage.local.set({ isPro: false, licenseKey: null });
+            return { success: false };
+        }
+
+        return { success: response.ok };
     } catch (err) {
         console.error("push failed: ", err);
-        return false;
+        return { success: false };
     }
 }
 
-export async function pullSync(): Promise<SyncPayload | null> {
+export async function pullSync(): Promise<{ data: SyncPayload | null; locked?: boolean }> {
     const lk = await getLicenseKey();
-    if (!lk) return null;
+    if (!lk) return { data: null };
 
     try {
         const deviceID = await getDeviceID();
@@ -96,12 +110,22 @@ export async function pullSync(): Promise<SyncPayload | null> {
             },
         });
 
-        if (!response.ok) return null;
+        if (response.status === 429) {
+            console.warn("Sync temporarily locked: Another active session in progress.");
+            return { data: null, locked: true };
+        }
+
+        if (response.status === 403 || response.status === 401) {
+            await chrome.storage.local.set({ isPro: false, licenseKey: null });
+            return { data: null };
+        }
+
+        if (!response.ok) return { data: null };
         const result = await response.json();
-        return result.data || null;
+        return { data: result.data || null };
     } catch (err) {
         console.error("pull failed: ", err);
-        return null;
+        return { data: null };
     }
 }
 
@@ -121,5 +145,29 @@ export async function createCheckoutSession(email: string): Promise<string> {
     return data.paymentUrl;
 }
 
+export function triggerDebouncedPush(payload: SyncPayload, delay = 3000) {
+    if (pushTimer) clearTimeout(pushTimer);
+    pushTimer = setTimeout(async () => {
+        await pushSync(payload);
+        pushTimer = null;
+    }, delay);
+}
 
+export async function initializeSync(): Promise<void> {
+    const isPro = (await chrome.storage.local.get("isPro")).isPro;
+    if (!isPro) return;
+
+    const { data: remotePayload, locked } = await pullSync();
+    if (locked || !remotePayload) return;
+
+    const localData = await chrome.storage.local.get("workspaces");
+    const localUpdatedAt = (localData.workspaces as { updatedAt?: number })?.updatedAt ?? 0;
+
+    if (remotePayload.updatedAt > localUpdatedAt) {
+        await chrome.storage.local.set({
+            workspaces: remotePayload.workspaces,
+            lastSyncedAt: Date.now()
+        });
+    }
+}
 

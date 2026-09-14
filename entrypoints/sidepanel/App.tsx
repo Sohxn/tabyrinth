@@ -148,7 +148,7 @@ export default function App() {
           <div className="font-logo text-sm text-gray-200"></div> :
           <div className="font-logo text-lg text-gray-200">Tabyrinth</div>}
         {isPro && (
-          <span className="text-xl text-[#FF6314] px-2 py-0.5 font-bold uppercase tracking-wider">
+          <span className="text-2xl text-[#FF6314] ml-4 mb-1 font-bold tracking-wider">
             plus
           </span>
         )}
