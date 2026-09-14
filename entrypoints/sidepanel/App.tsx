@@ -5,6 +5,10 @@ import { type TreeStorageSchema } from '@/src/types';
 import { StorageService } from '@/src/services/storage';
 import { MediaCard } from './MediaCard';
 import { WorkspaceNotch } from './WorkspaceNotch';
+import { GearIcon, ArrowClockwiseIcon, MagnifyingGlassIcon, PlusIcon } from '@phosphor-icons/react';
+
+// only for sync 
+import { createCheckoutSession, activateLicenseKey, getLicenseKey } from '@/src/services/sync';
 
 
 export default function App() {
@@ -12,7 +16,22 @@ export default function App() {
   const treeContainerRef = useRef<HTMLDivElement>(null);
   const [isResettingGhosts, SetIsResettingGhosts] = useState(false);
 
+  // settings related
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isPro, setIsPro] = useState(false);
+  const [activeKey, setActiveKey] = useState<string | null>(null);
+  const [activationMail, setActivationMail] = useState('');
+  const [inputKey, setInputKey] = useState('');
+  const [statusMessage, setStatusMessage] = useState<{ text: string; isError: boolean } | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // workspace related 
   const workspaceTabIDs = getTabsByWorkspace(activeWorkspaceID);
+
+  // settings button function
+  const handleOpenSettings = () => {
+    setIsSettingsOpen(!isSettingsOpen);
+  }
 
   useEffect(() => {
     if (treeContainerRef.current) {
@@ -41,10 +60,21 @@ export default function App() {
 
   useEffect(() => {
     init();
+    // local license check 
+    chrome.storage.local.get(["isPro", "licenseKey"], (res) => {
+      if (res.isPro) setIsPro(true);
+      if (res.licenseKey) setActiveKey((res.licenseKey) as string);
+    });
 
     const handleStorageChange = (changes: { [key: string]: chrome.storage.StorageChange }) => {
       if (changes.tabTreeData?.newValue) {
         syncFromStorage(changes.tabTreeData.newValue as TreeStorageSchema);
+      }
+      if (changes.isPro) {
+        setIsPro(Boolean(changes.isPro.newValue));
+      }
+      if (changes.licenseKey) {
+        setActiveKey((changes.licenseKey.newValue as string) || null);
       }
     };
 
@@ -61,7 +91,6 @@ export default function App() {
       assignTabToWorkspace(String(newTab.id), activeWorkspaceID);
     }
   }
-  // added animation
   const resetTree = async () => {
     SetIsResettingGhosts(true);
     setTimeout(async () => {
@@ -70,12 +99,59 @@ export default function App() {
     }, 300);
   }
 
+  const handleBuyPro = async () => {
+    if (!activationMail || !activationMail.includes('@')) {
+      setStatusMessage({ text: 'Please enter a valid email address.', isError: true });
+      return;
+    }
+
+    setLoading(true);
+    setStatusMessage(null);
+    try {
+      const paymentUrl = await createCheckoutSession(activationMail);
+      chrome.tabs.create({ url: paymentUrl });
+      setStatusMessage({ text: 'Checkout page opened! Complete payment to receive your key via email.', isError: false });
+    } catch (err: any) {
+      setStatusMessage({ text: err.message || 'Failed to create payment link.', isError: true });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleActivateKey = async () => {
+    if (!inputKey.trim()) {
+      setStatusMessage({ text: 'Please enter a license key', isError: true });
+      return;
+    }
+
+    setLoading(true);
+    setStatusMessage(null);
+    const result = await activateLicenseKey(inputKey);
+    setLoading(false);
+
+    if (result.success) {
+      setIsPro(true);
+      setActiveKey(inputKey.trim());
+      setStatusMessage({ text: 'Tabyrinth Plus activated', isError: false });
+      setInputKey('');
+    } else {
+      setStatusMessage({ text: result.error || 'Invalid license key.', isError: true });
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen w-full bg-[#21252b] text-[#e3e1e5] p-2 text-xs select-none overflow-hidden">
 
       {/* header */}
       <div className="flex items-center justify-between px-2 h-16">
-        <div className="font-logo text-lg text-gray-200">Tabyrinth</div>
+        {isPro ?
+          <div className="font-logo text-sm text-gray-200"></div> :
+          <div className="font-logo text-lg text-gray-200">Tabyrinth</div>}
+        {isPro && (
+          <span className="text-xl text-[#FF6314] px-2 py-0.5 font-bold uppercase tracking-wider">
+            plus
+          </span>
+        )}
 
         {/* <div className='flex items-center justify-center rounded-3xl h-10 w-full max-w-xs bg-black mx-4'>...</div> */}
         <WorkspaceNotch />
@@ -126,21 +202,101 @@ export default function App() {
       {/* footer */}
       <div className='shrink-0 bottom-3 left-3 right-3 grid grid-cols-6 gap-4 items-center justify-center bg-transparent'>
         {/* search bar */}
-        <div className='rounded-full border-[2px] border-white h-12 my-2 py-2 justify-center items-center grid grid-cols-4 col-span-4'>
-          <div className='col-span-1 ml-4'>search icon</div>
-          <div className='col-span-3 mr-4'>search areaaaaaa</div>
+        <div className='rounded-full h-12 my-2 py-2 justify-center items-center grid grid-cols-4 col-span-4
+        bg-[#21252b] shadow-[inset_9px_9px_18px_#121418,inset_-9px_-9px_18px_#30363e]'>
+          <div className='col-span-1 ml-4'><MagnifyingGlassIcon size={24} /></div>
+          <div className='flex col-span-3 justify-center'></div>
         </div>
 
         {/* clear tree button */}
-        <button onClick={resetTree} className='rounded-full border-[2px] border-white h-12 justify-center items-center'>
-          <span className='text-[15px] font-bold'>reset</span>
+        <button onClick={resetTree} className='flex h-12 justify-center items-center'>
+          <ArrowClockwiseIcon size={32} />
         </button>
 
         {/* settings button */}
-        <div className='rounded-full border-[2px] border-white h-12 justify-center items-center'>
-
-        </div>
+        <button onClick={handleOpenSettings} className='flex h-12 justify-center items-center'>
+          <GearIcon size={32} />
+        </button>
       </div>
+
+      {/* settings element */}
+      {isSettingsOpen && (
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col p-4 overflow-y-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-bold text-white">
+              Tabyrinth
+              <span className='text-md font-bold text-[#FF6314] text-center'> plus</span></h2>
+            <button
+              onClick={() => { setIsSettingsOpen(false); setStatusMessage(null); }}
+              className="text-gray-400 hover:text-white text-base font-bold px-2">
+              ✕
+            </button>
+          </div>
+
+          {statusMessage && (
+            <div className={`p-2.5 rounded-xl text-xs mb-3 ${statusMessage.isError ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-green-500/20 text-white font-bold text-[14px]'}`}>
+              {statusMessage.text}
+            </div>
+          )}
+
+          {isPro ? (
+            <div className="bg-white/5 border border-white/2 rounded-2xl p-4 flex flex-col gap-2">
+              <div className="text-xs text-gray-400">Plus License Active</div>
+              <div className="font-mono text-sm text-[#FF6314] break-all">{activeKey}</div>
+              <div className="text-[11px] text-gray-400 mt-2">
+                Cloud Sync is active. Your device is registered.
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-4">
+              {/* Buy Pro Section */}
+              <div className="bg-white/5 rounded-2xl p-4 flex flex-col gap-2">
+                <span className="font-bold text-sm text-white">Upgrade to Tabyrinth Plus</span>
+                <span className="text-gray-300 text-[13px]">
+                  Get multi-device Cloud Sync with a <span className='text-[#FF6314]'>$10</span> Lifetime License.
+                </span>
+
+                <input
+                  type="email"
+                  placeholder="Enter activation email"
+                  value={activationMail}
+                  onChange={(e) => setActivationMail(e.target.value)}
+                  className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#FF6314]"
+                />
+
+                <button
+                  onClick={handleBuyPro}
+                  disabled={loading}
+                  className="bg-[#FF6314] hover:bg-[#ff742d] disabled:opacity-50 text-white font-bold py-2 rounded-xl text-xs transition-colors"
+                >
+                  {loading ? 'Generating Link...' : 'Buy Lifetime Access ($10)'}
+                </button>
+              </div>
+
+              {/* Activate Key Section */}
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col gap-2">
+                <span className="font-bold text-sm text-white">Already have a key?</span>
+                <input
+                  type="text"
+                  placeholder="PRO-XXXX-XXXX-XXXX"
+                  value={inputKey}
+                  onChange={(e) => setInputKey(e.target.value)}
+                  className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#FF6314] font-mono"
+                />
+
+                <button
+                  onClick={handleActivateKey}
+                  disabled={loading}
+                  className="bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white font-bold py-2 rounded-xl text-xs transition-colors"
+                >
+                  {loading ? 'Verifying...' : 'Activate License'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
     </div>
   );
 }

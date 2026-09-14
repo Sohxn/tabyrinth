@@ -89,6 +89,9 @@ export default defineBackground(() => {
     await StorageService.clearAll();
     await StorageService.resetToActiveTabsOnly();
 
+    const state = await StorageService.get();
+    const activeWSID = state.activeWorkspaceID;
+
     const tabs = await chrome.tabs.query({});
     for (const tab of tabs) {
       if (!tab.id) continue;
@@ -101,7 +104,8 @@ export default defineBackground(() => {
         favIconURL: tab.favIconUrl,
         isLoading: tab.status === 'loading',
         isClosed: false,
-        childrenIDs: []
+        childrenIDs: [],
+        workspaceID: activeWSID
       };
       await StorageService.upsertNode(tabNode);
     }
@@ -160,6 +164,7 @@ export default defineBackground(() => {
     const targetURL = tab.url || tab.pendingUrl || 'chrome://newtab/'
     const isNewTab = targetURL.includes('chrome://newtab') || targetURL.includes('about:blank') || targetURL === '';
     const rawParentID = tab.openerTabId ?? null;
+    const activeWSID = state.activeWorkspaceID || 'default';
 
     const newTabNode: TabNode = {
       id: tab.id,
@@ -170,7 +175,8 @@ export default defineBackground(() => {
       favIconURL: tab.favIconUrl,
       isLoading: tab.status === 'loading',
       isClosed: false,
-      childrenIDs: []
+      childrenIDs: [],
+      workspaceID: activeWSID
     };
 
     await StorageService.upsertNode(newTabNode);
@@ -193,6 +199,7 @@ export default defineBackground(() => {
       const isLoading = changeInfo.status ? changeInfo.status === 'loading' : (tab.status === 'loading');
       const currentURL = tab.url || existing.url;
       const samePage = isSamePageNavigation(existing.url, tab.url!);
+      const currWSID = existing.workspaceID || state.activeWorkspaceID || 'default';
 
       // same page, metadata only -> no split
       if (samePage || isPlaceholder(existing.url, existing.title)) {
@@ -202,7 +209,8 @@ export default defineBackground(() => {
               ...existing,
               url: currentURL,
               title: tab.title || existing.title,
-              favIconURL: tab.favIconUrl || existing.favIconURL
+              favIconURL: tab.favIconUrl || existing.favIconURL,
+              workspaceID: currWSID
             }
           }
         };
@@ -214,6 +222,7 @@ export default defineBackground(() => {
       const historyNode: TabNode = {
         ...existing,
         id: historyNodeID,
+        workspaceID: currWSID,
         isHistoryNode: true,
         isClosed: true,
         isLoading: false,
@@ -229,7 +238,8 @@ export default defineBackground(() => {
         favIconURL: tab.favIconUrl,
         isLoading,
         isClosed: false,
-        childrenIDs: existing.childrenIDs.filter((id) => String(id) !== historyNodeID)
+        childrenIDs: existing.childrenIDs.filter((id) => String(id) !== historyNodeID),
+        workspaceID: currWSID
       };
 
       const updatedNodes: Record<string | number, TabNode> = {

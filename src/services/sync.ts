@@ -62,7 +62,7 @@ export async function activateLicenseKey(rawKey: string): Promise<{
 
 export async function pushSync(payload: SyncPayload): Promise<boolean> {
     const lk = await getLicenseKey();
-    if (!getLicenseKey) return false;
+    if (!lk) return false;
 
     try {
         const deviceID = await getDeviceID();
@@ -84,7 +84,7 @@ export async function pushSync(payload: SyncPayload): Promise<boolean> {
 
 export async function pullSync(): Promise<SyncPayload | null> {
     const lk = await getLicenseKey();
-    if (!getLicenseKey) return null;
+    if (!lk) return null;
 
     try {
         const deviceID = await getDeviceID();
@@ -105,7 +105,21 @@ export async function pullSync(): Promise<SyncPayload | null> {
     }
 }
 
+export async function createCheckoutSession(email: string): Promise<string> {
+    const result = await fetch(`${WURL}/api/create-payment-link`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ email }),
+    });
 
-// test entire sync loop locally using a manual hashed test key in kv store
+    const data = await result.json();
+    if (!result.ok) {
+        throw new Error(data.error || "Failed to initiate payment");
+    }
+    return data.paymentUrl;
+}
+
 
 

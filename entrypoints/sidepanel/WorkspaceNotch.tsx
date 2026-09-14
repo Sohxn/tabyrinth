@@ -139,7 +139,7 @@ export function WorkspaceNotch() {
                             </form>
                         )}
 
-                        {/* Workspaces List / Drop Zones */}
+                        {/* drop zone */}
                         <div className="flex flex-col gap-2 max-h-64 overflow-y-auto no-scrollbar">
                             {workspaces.map((ws, idx) => {
                                 const isActive = ws.id === activeWorkspaceID;
