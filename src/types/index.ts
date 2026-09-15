@@ -35,6 +35,7 @@ export interface TreeStorageSchema {
     // subscription status (preferibly use in another type for user)
     isPro: boolean;
     // workspace persistence
+    lastSyncedAt?: number;
     activeWorkspaceID: string;
     workspaces?: Workspace[];
 }

@@ -1,9 +1,27 @@
-import { type SyncPayload } from "../types";
+import { StorageService } from "./storage";
+import { type SyncPayload, type Workspace, type TreeStorageSchema } from "../types";
 import { URLs } from "../requestURLs/urls";
 
 const WURL = URLs['prod'];
 
 let pushTimer: ReturnType<typeof setTimeout> | null = null;
+let maxWaitTimer: ReturnType<typeof setTimeout> | null = null;
+let isDirty = false;
+let lastPushedHash = "";
+
+const DEBOUNCE_DELAY = 3000;
+const MAX_WAIT_DELAY = 15000;
+
+
+//todo: replace with a cryptographic hash 
+function fastHash(str: string) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = (hash << 5) - hash + str.charCodeAt(i);
+        hash |= 0;
+    }
+    return hash.toString(36);
+}
 
 export async function getDeviceID(): Promise<string> {
     const result = await chrome.storage.local.get("deviceId");
@@ -23,10 +41,7 @@ export async function getLicenseKey(): Promise<string | null> {
     return typeof result.licenseKey === "string" ? result.licenseKey : null;
 }
 
-export async function activateLicenseKey(rawKey: string): Promise<{
-    success: boolean;
-    error?: string
-}> {
+export async function activateLicenseKey(rawKey: string): Promise<{ success: boolean; error?: string }> {
     try {
         const deviceID = await getDeviceID();
         const response = await fetch(`${WURL}/api/verify-key`, {
@@ -145,29 +160,112 @@ export async function createCheckoutSession(email: string): Promise<string> {
     return data.paymentUrl;
 }
 
-export function triggerDebouncedPush(payload: SyncPayload, delay = 3000) {
-    if (pushTimer) clearTimeout(pushTimer);
-    pushTimer = setTimeout(async () => {
-        await pushSync(payload);
-        pushTimer = null;
-    }, delay);
+// only push if system is dirty and state has changed
+export async function flushPendingSync(): Promise<void> {
+    if (pushTimer) { clearTimeout(pushTimer); pushTimer = null; }
+    if (maxWaitTimer) { clearTimeout(maxWaitTimer); maxWaitTimer = null; }
+
+    if (!isDirty) return;
+
+    const state = await StorageService.get();
+    const { isPro, workspaces, activeWorkspaceID, nodes, rootIDs } = state;
+
+    if (!isPro || !Array.isArray(workspaces)) {
+        isDirty = false;
+        return;
+    }
+
+    const contentStr = JSON.stringify({ workspaces, activeWorkspaceID, nodes, rootIDs });
+    const currHash = fastHash(contentStr);
+
+    if (currHash === lastPushedHash) {
+        isDirty = false;
+        return;
+    }
+
+    const payload: SyncPayload = {
+        updatedAt: Date.now(),
+        workspaces,
+        activeWorkspaceID: activeWorkspaceID ?? "",
+        nodes: nodes ?? {},
+        rootIDs: rootIDs ?? [],
+    };
+
+    const result = await pushSync(payload);
+    if (result.success) {
+        lastPushedHash = currHash;
+        isDirty = false;
+        await StorageService.set({ lastSyncedAt: payload.updatedAt });
+    }
 }
 
+export function triggerDebouncedPush(): void {
+    isDirty = true;
+
+    if (pushTimer) clearTimeout(pushTimer);
+    pushTimer = setTimeout(async () => {
+        flushPendingSync();
+    }, DEBOUNCE_DELAY);
+
+    if (!maxWaitTimer) {
+        maxWaitTimer = setTimeout(() => {
+            flushPendingSync();
+        }, MAX_WAIT_DELAY);
+    }
+}
+
+// sync life cycle
 export async function initializeSync(): Promise<void> {
-    const isPro = (await chrome.storage.local.get("isPro")).isPro;
-    if (!isPro) return;
+    const state = await StorageService.get();
+    if (!state.isPro) return;
 
     const { data: remotePayload, locked } = await pullSync();
     if (locked || !remotePayload) return;
 
-    const localData = await chrome.storage.local.get("workspaces");
-    const localUpdatedAt = (localData.workspaces as { updatedAt?: number })?.updatedAt ?? 0;
+    const localUpdatedAt = state.lastSyncedAt ?? 0;
 
     if (remotePayload.updatedAt > localUpdatedAt) {
-        await chrome.storage.local.set({
+        await StorageService.set({
             workspaces: remotePayload.workspaces,
-            lastSyncedAt: Date.now()
+            activeWorkspaceID: remotePayload.activeWorkspaceID,
+            nodes: remotePayload.nodes,
+            rootIDs: remotePayload.rootIDs,
+            lastSyncedAt: Date.now(),
         });
+        lastPushedHash = fastHash(JSON.stringify({
+            workspaces: remotePayload.workspaces,
+            activeWorkspaceID: remotePayload.activeWorkspaceID,
+            nodes: remotePayload.nodes,
+            rootIDs: remotePayload.rootIDs,
+        }));
     }
+}
+
+export function setupSyncListeners(): void {
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName !== "local") return;
+        const treeChange = changes.tabTreeData;
+        if (!treeChange) return;
+
+        const oldWorkspaces = (treeChange.oldValue as TreeStorageSchema | undefined)?.workspaces;
+        const newWorkspaces = (treeChange.newValue as TreeStorageSchema | undefined)?.workspaces;
+
+        if (JSON.stringify(oldWorkspaces) !== JSON.stringify(newWorkspaces)) {
+            triggerDebouncedPush();
+        }
+    });
+
+    chrome.windows.onFocusChanged.addListener((windowID) => {
+        if (windowID === chrome.windows.WINDOW_ID_NONE) {
+            flushPendingSync();
+        }
+    });
+
+    chrome.idle.setDetectionInterval(60);
+    chrome.idle.onStateChanged.addListener((newState) => {
+        if (newState === "idle" || newState == "locked") {
+            flushPendingSync();
+        }
+    });
 }
 

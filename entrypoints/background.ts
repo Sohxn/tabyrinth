@@ -2,6 +2,7 @@ import { defineBackground } from "#imports";
 import { StorageService } from "@/src/services/storage";
 import { type TabNode } from "@/src/types";
 import { getAccentColorFromURL } from "@/src/utils/mediaColors";
+import { initializeSync, setupSyncListeners } from "@/src/services/sync";
 
 // not the best 
 const RESOURCE_ID_KEYS = new Set([
@@ -78,15 +79,14 @@ async function reconcileMediaState() {
 
 
 export default defineBackground(() => {
+
+  setupSyncListeners();
+
   chrome.sidePanel.setPanelBehavior({
     openPanelOnActionClick: true
   }).catch(console.error);
 
   const syncExistingTabs = async () => {
-
-    // on startup
-    // if set to 'dont retain tab tree'
-    await StorageService.clearAll();
     await StorageService.resetToActiveTabsOnly();
 
     const state = await StorageService.get();
@@ -113,13 +113,21 @@ export default defineBackground(() => {
   // sync tabs with the storage
   syncExistingTabs();
 
-  // add additional menu items
-  chrome.runtime.onInstalled.addListener(() => {
+  // on install
+  chrome.runtime.onInstalled.addListener(async () => {
+    await initializeSync();
+
     chrome.contextMenus.create({
       id: "add-note-to-tab",
       title: "Add note to tab",
       contexts: ["selection", "page"]
     });
+  });
+
+  // on startup
+  chrome.runtime.onStartup.addListener(async () => {
+    await initializeSync();
+    reconcileMediaState();
   });
 
   chrome.contextMenus.onClicked.addListener(async (info, tab) => {
