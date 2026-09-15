@@ -8,11 +8,12 @@ export default defineConfig({
     description: 'Vertical tabs but better',
     version: '1.0.0',
     permissions: [
-      'tabs', 
-      'storage', 
-      'sidePanel', 
+      'tabs',
+      'storage',
+      'sidePanel',
       'alarms',
-      'contextMenus'
+      'contextMenus',
+      'idle'
     ],
     action: {},
     side_panel: {

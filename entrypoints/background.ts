@@ -4,6 +4,7 @@ import { type TabNode } from "@/src/types";
 import { getAccentColorFromURL } from "@/src/utils/mediaColors";
 import { initializeSync, setupSyncListeners } from "@/src/services/sync";
 
+
 // not the best 
 const RESOURCE_ID_KEYS = new Set([
   'v', 'id', 'item', 'doc', 'article', 'page_id'
@@ -312,5 +313,13 @@ export default defineBackground(() => {
       const nextTabId = audibleTabs.length > 0 ? audibleTabs[0]?.id ?? null : null;
       await StorageService.setActiveMediaTab(nextTabId);
     }
+  });
+
+
+  //periodic remote pulling
+  // todo: Ill see if I genuinely need this feature
+  chrome.alarms.create('cloud-pull-sync', { periodInMinutes: 5 });
+  chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === 'cloud-pull-sync') initializeSync();
   });
 });

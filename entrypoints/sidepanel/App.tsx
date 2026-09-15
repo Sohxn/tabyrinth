@@ -234,23 +234,23 @@ export default function App() {
           </div>
 
           {statusMessage && (
-            <div className={`p-2.5 rounded-xl text-xs mb-3 ${statusMessage.isError ? 'bg-red-500/20 text-red-300 border border-red-500/30' : 'bg-green-500/20 text-white font-bold text-[14px]'}`}>
-              {statusMessage.text}
+            <div className={`p-2.5 rounded-xl text-xs mb-3 ${statusMessage.isError ? 'bg-red-600 text-white font-bold text-[14px]' : 'bg-green-600 text-white font-bold text-[14px]'}`}>
+              {statusMessage.text.toUpperCase()}
             </div>
           )}
 
           {isPro ? (
             <div className="bg-white/5 border border-white/2 rounded-2xl p-4 flex flex-col gap-2">
-              <div className="text-xs text-gray-400">Plus License Active</div>
-              <div className="font-mono text-sm text-[#FF6314] break-all">{activeKey}</div>
-              <div className="text-[11px] text-gray-400 mt-2">
-                Cloud Sync is active. Your device is registered.
+              <div className="text-sm text-gray-400">Plus License Active</div>
+              <div className="font-mono font-bold text-xl text-[#FF6314] break-all">{activeKey}</div>
+              <div className="text-[14px] text-gray-400">
+                Cross platform sync is active
               </div>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
               {/* Buy Pro Section */}
-              <div className="bg-white/5 rounded-2xl p-4 flex flex-col gap-2">
+              <div className="bg-white/15 rounded-2xl p-4 flex flex-col gap-2">
                 <span className="font-bold text-sm text-white">Upgrade to Tabyrinth Plus</span>
                 <span className="text-gray-300 text-[13px]">
                   Get multi-device Cloud Sync with a <span className='text-[#FF6314]'>$10</span> Lifetime License.
@@ -274,7 +274,7 @@ export default function App() {
               </div>
 
               {/* Activate Key Section */}
-              <div className="bg-white/5 border border-white/10 rounded-2xl p-3.5 flex flex-col gap-2">
+              <div className="bg-white/15 rounded-2xl p-3.5 flex flex-col gap-2">
                 <span className="font-bold text-sm text-white">Already have a key?</span>
                 <input
                   type="text"

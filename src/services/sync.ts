@@ -1,5 +1,5 @@
 import { StorageService } from "./storage";
-import { type SyncPayload, type Workspace, type TreeStorageSchema } from "../types";
+import { type SyncPayload, type TreeStorageSchema } from "../types";
 import { URLs } from "../requestURLs/urls";
 
 const WURL = URLs['prod'];
@@ -247,25 +247,27 @@ export function setupSyncListeners(): void {
         const treeChange = changes.tabTreeData;
         if (!treeChange) return;
 
-        const oldWorkspaces = (treeChange.oldValue as TreeStorageSchema | undefined)?.workspaces;
-        const newWorkspaces = (treeChange.newValue as TreeStorageSchema | undefined)?.workspaces;
+        const oldData = treeChange.oldValue as TreeStorageSchema | undefined;
+        const newData = treeChange.newValue as TreeStorageSchema | undefined;
 
-        if (JSON.stringify(oldWorkspaces) !== JSON.stringify(newWorkspaces)) {
+        const hasWorkspacesChanged = JSON.stringify(oldData?.workspaces) !== JSON.stringify(newData?.workspaces);
+        const hasNodesChanged = JSON.stringify(oldData?.nodes) !== JSON.stringify(newData?.nodes);
+        const hasRootsChanged = JSON.stringify(oldData?.rootIDs) !== JSON.stringify(newData?.rootIDs);
+        const hasActiveWSChanged = oldData?.activeWorkspaceID !== newData?.activeWorkspaceID;
+
+        if (hasWorkspacesChanged || hasNodesChanged || hasRootsChanged || hasActiveWSChanged) {
             triggerDebouncedPush();
         }
     });
 
     chrome.windows.onFocusChanged.addListener((windowID) => {
-        if (windowID === chrome.windows.WINDOW_ID_NONE) {
-            flushPendingSync();
-        }
+        if (windowID === chrome.windows.WINDOW_ID_NONE) flushPendingSync();
     });
 
-    chrome.idle.setDetectionInterval(60);
-    chrome.idle.onStateChanged.addListener((newState) => {
-        if (newState === "idle" || newState == "locked") {
-            flushPendingSync();
-        }
-    });
+    if (chrome.idle) {
+        chrome.idle.setDetectionInterval(60);
+        chrome.idle.onStateChanged.addListener((newState) => {
+            if (newState === "idle" || newState == "locked") flushPendingSync();
+        });
+    }
 }
-

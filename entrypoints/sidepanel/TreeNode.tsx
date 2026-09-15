@@ -124,8 +124,10 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
     ${isSlidingOut ? 'translate-x-full opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}`}>
       {depth > 0 && !shouldCollapseStack && (
         <div
-          className="absolute top-0 bottom-15 border-l border-gray-500"
-          style={{ left: depth === 1 ? 4 : `${depth * 14 - 2}px` }}
+          className="absolute top-1 bottom-14 border-l border-8 border-[#333333] bg-black rounded-2xl"
+          style={{
+            marginLeft: `${depth * 16 - 9}px`,
+          }}
         />
       )}
 
@@ -133,7 +135,7 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
         <div onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
           onClick={handleTabClick}
-          style={{ marginLeft: (depth === 0 || isActive) ? 0 : `${depth * 14 + 8}px` }}
+          style={{ marginLeft: (depth === 0 || isActive || !hasChildren) ? 0 : `${depth * 16 + 9}px` }}
           className={`group relative flex items-center h-12 pr-2 my-[1px] rounded-2xl text-xs cursor-pointer transition-colors border-2 border-[#333333] 
             ${isActive ? 'bg-[#416387] text-bold font-medium' : node.isClosed
               ? 'bg-black text-white opacity-40'
