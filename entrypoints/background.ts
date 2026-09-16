@@ -131,6 +131,13 @@ export default defineBackground(() => {
     reconcileMediaState();
   });
 
+  // keybind opens sidebar
+  chrome.commands.onCommand.addListener((command, tab) => {
+    if (command !== "open-tabyrinth") return;
+    if (tab?.windowId === undefined) return;
+    chrome.sidePanel.open({ windowId: tab.windowId }).catch(console.error);
+  });
+
   chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (info.menuItemId === "add-note-to-tab" && tab?.id) {
       const noteText = info.selectionText || info.pageUrl || "";

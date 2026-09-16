@@ -16,6 +16,14 @@ export default defineConfig({
       'idle'
     ],
     action: {},
+    commands: {
+      "open-tabyrinth": {
+        "suggested_key": {
+          "default": "Ctrl+Shift+Y"
+        },
+        "description": "Open Tabyrinth Sidebar"
+      },
+    },
     side_panel: {
       default_path: 'sidepanel.html'
     },
