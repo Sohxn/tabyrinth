@@ -24,6 +24,8 @@ interface TreeStoreState {
     activeMediaTabID: string | number | null;
 
     init: () => Promise<void>;
+
+    //testing the editor
     syncFromStorage: (schema: TreeStorageSchema) => void;
     toggleExpand: (nodeID: string | number) => void;
     toggleStackExpand: (nodeID: string | number) => void;
