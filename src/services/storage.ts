@@ -298,6 +298,19 @@ export const StorageService = {
         title: newTab.title || oldNode.title
       };
 
+      // **fix: link the orphaned children as well on ghost tab revival
+      if (oldNode.childrenIDs && oldNode.childrenIDs.length > 0) {
+        oldNode.childrenIDs.forEach((childID) => {
+          const child = updatedNodes[childID];
+          if (child) {
+            updatedNodes[childID] = {
+              ...child,
+              parentID: newID
+            }
+          }
+        });
+      }
+
       if (oldNodeID !== newID) {
         delete updatedNodes[oldNodeID];
       }

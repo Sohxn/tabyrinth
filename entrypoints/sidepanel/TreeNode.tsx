@@ -96,11 +96,16 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
   }
 
   // reopen closed tabs (history)
+  // ** race condtion: fixed 
+  //** fix: call from background worker instead of direct call
   const handleTabClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
 
     if (node.isClosed) {
-      await StorageService.reopenNode(node.id);
+      await chrome.runtime.sendMessage({
+        type: 'reopen-node',
+        nodeID: node.id
+      });
     } else {
       await chrome.tabs.update(Number(node.id), { active: true });
       await chrome.windows.update(node.windowID, { focused: true });

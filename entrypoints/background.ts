@@ -154,8 +154,22 @@ export default defineBackground(() => {
     });
   });
 
+  //todo: remove redundant listener 
   chrome.runtime.onStartup.addListener(() => {
     reconcileMediaState();
+  });
+
+  //** fix for race condition: tab creation from ghost tab 
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.type == 'reopen-node') {
+      StorageService.reopenNode(message.nodeID).then(() => sendResponse({
+        ok: true
+      })).catch((err) => sendResponse({
+        ok: false,
+        error: String(err)
+      }));
+      return true;
+    }
   });
 
   chrome.alarms.create('media-reconcile', { periodInMinutes: 1 });
