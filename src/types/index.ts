@@ -1,3 +1,16 @@
+//*added: groups
+//***note: for groups id like to have an uplifted blob like 
+//***note: the craftzdog vid
+export type GroupType = 'chain' | 'ghost';
+
+export interface TabGroup {
+    id: string;
+    type: GroupType;
+    workspaceID: string;
+    rootID: string | number;
+    nodeIDs: (string | number)[];
+}
+
 export interface TabNode {
     id: string | number;
     title: string;
@@ -29,6 +42,7 @@ export interface TabNote {
 export interface TreeStorageSchema {
     nodes: Record<string | number, TabNode>;
     rootIDs: (string | number)[];
+    groups: Record<string, TabGroup>;
     lastActiveTabID: number | null;
     activeMediaTabID: string | number | null;
     activeMediaAccentColor: string | null;
@@ -55,5 +69,6 @@ export interface SyncPayload {
     workspaces: Workspace[];
     nodes: Record<string | number, TabNode>;
     rootIDs: (string | number)[];
+    groups: Record<string, TabGroup>;
 }
 
