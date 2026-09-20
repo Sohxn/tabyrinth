@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { StorageService } from '../services/storage';
-import { type TabNode, type TreeStorageSchema, type Workspace } from '../types';
+import { type TabNode, type TreeStorageSchema, type Workspace, type TabGroup } from '../types';
 
 const DEFAULT_WORKSPACE: Workspace = {
     id: 'workspace-default',
@@ -19,6 +19,9 @@ interface TreeStoreState {
     expandedNodeIDs: Record<string | number, boolean>;
     expandedStackIDs: Record<string | number, boolean>;
     searchQuery: string;
+
+    // grouping
+    groups: Record<string, TabGroup>;
 
     // secondary
     activeMediaTabID: string | number | null;
@@ -40,6 +43,9 @@ interface TreeStoreState {
     assignTabToWorkspace: (nodeID: string, workspaceID: string) => void;
     getTabsByWorkspace: (workspaceID: string) => (string | number)[];
     setActiveWorkspace: (workspaceID: string) => Promise<void>;
+    //grouping
+    getRegularRootIDs: (WorkspaceID: string) => (string | number)[];
+    getGhostGroup: (workspaceID: string) => TabGroup | null;
 }
 
 export const useTreeStore = create<TreeStoreState>()((set, get) => ({
@@ -48,6 +54,7 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
 
     nodes: {},
     rootIDs: [],
+    groups: {},
     lastActiveTabID: null,
     isPro: false,
     expandedNodeIDs: {},
@@ -79,7 +86,8 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
                 expandedNodeIDs: nextExpanded,
                 activeMediaTabID: schema.activeMediaTabID ?? null,
                 workspaces: schema.workspaces && schema.workspaces.length > 0 ? schema.workspaces : state.workspaces,
-                activeWorkspaceID: schema.activeWorkspaceID || state.activeWorkspaceID
+                activeWorkspaceID: schema.activeWorkspaceID || state.activeWorkspaceID,
+                groups: schema.groups || {}
             }
         })
     },
@@ -204,6 +212,22 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
             const tabWorkspace = node.workspaceID || DEFAULT_WORKSPACE.id;
             return tabWorkspace === workspaceID;
         });
+    },
+
+    getRegularRootIDs: (workspaceID: string) => {
+        const { rootIDs, nodes } = get();
+        return rootIDs.filter((id) => {
+            const node = nodes[id];
+            if (!node) return false;
+            const wsID = node.workspaceID || DEFAULT_WORKSPACE.id;
+            if (wsID !== workspaceID) return false;
+            const isStandaloneGhost = node.isClosed && (!node.childrenIDs || node.childrenIDs.length === 0);
+            return !isStandaloneGhost;
+        });
+    },
+
+    getGhostGroup: (WorkspaceID: string) => {
+        return get().groups[`ghost_${WorkspaceID}`] ?? null;
     },
 
     setActiveWorkspace: async (workspaceID: string) => {

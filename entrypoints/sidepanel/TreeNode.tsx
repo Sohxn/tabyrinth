@@ -1,4 +1,4 @@
-import React, { type SyntheticEvent } from 'react';
+import React, { useState, type SyntheticEvent } from 'react';
 import { useTreeStore } from '../../src/store/useTreeStore';
 import { StorageService } from '@/src/services/storage';
 import { type TabNode } from '@/src/types';

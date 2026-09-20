@@ -5,15 +5,15 @@ import { type TreeStorageSchema } from '@/src/types';
 import { StorageService } from '@/src/services/storage';
 import { MediaCard } from './MediaCard';
 import { WorkspaceNotch } from './WorkspaceNotch';
-import { GearIcon, ArrowClockwiseIcon, MagnifyingGlassIcon, PlusIcon } from '@phosphor-icons/react';
+import { GearIcon, ArrowClockwiseIcon, MagnifyingGlassIcon, PlusIcon, Ghost } from '@phosphor-icons/react';
 
 // only for sync 
 import { createCheckoutSession, activateLicenseKey, getLicenseKey } from '@/src/services/sync';
+import { GhostGroup } from './GhostGroup';
 
 
 export default function App() {
-  const { rootIDs, init, syncFromStorage, nodes, activeWorkspaceID, getTabsByWorkspace, assignTabToWorkspace } = useTreeStore();
-  const treeContainerRef = useRef<HTMLDivElement>(null);
+  const { rootIDs, init, syncFromStorage, nodes, activeWorkspaceID, getRegularRootIDs, getGhostGroup, assignTabToWorkspace } = useTreeStore(); const treeContainerRef = useRef<HTMLDivElement>(null);
   const [isResettingGhosts, SetIsResettingGhosts] = useState(false);
 
   // settings related
@@ -26,7 +26,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
 
   // workspace related 
-  const workspaceTabIDs = getTabsByWorkspace(activeWorkspaceID);
+  const regularRootIDs = getRegularRootIDs(activeWorkspaceID);
+  const ghostGroup = getGhostGroup(activeWorkspaceID);
 
   // settings button function
   const handleOpenSettings = () => {
@@ -37,7 +38,7 @@ export default function App() {
     if (treeContainerRef.current) {
       treeContainerRef.current.scrollTop = treeContainerRef.current.scrollHeight;
     }
-  }, [workspaceTabIDs]);
+  }, [regularRootIDs]);
 
   useEffect(() => {
     const port = chrome.runtime.connect({
@@ -171,17 +172,19 @@ export default function App() {
       <div className="flex-1 min-h-0 flex flex-col">
         {/* Scrollable list area */}
         <div ref={treeContainerRef} className="flex-1 overflow-y-auto no-scrollbar">
-          {!workspaceTabIDs || workspaceTabIDs.length === 0 ? (
+          {!regularRootIDs || regularRootIDs.length === 0 ? (
             <div className="flex flex-col items-center justify-center m-2">
               <p className="text-gray-400 font-bold text-lg text-center">No active tabs in this group</p>
             </div>
           ) : (
             <div className="flex flex-col gap-1">
-              {workspaceTabIDs.map((rootID) => (
+              {regularRootIDs.map((rootID) => (
                 <TreeNode key={rootID} nodeID={rootID} depth={0} isResettingGhosts={isResettingGhosts} />
               ))}
             </div>
           )}
+
+          {ghostGroup && <GhostGroup group={ghostGroup} isResettingGhosts={isResettingGhosts} />}
 
           {/* new tab button */}
           <button

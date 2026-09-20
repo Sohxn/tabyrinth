@@ -168,14 +168,14 @@ export async function flushPendingSync(): Promise<void> {
     if (!isDirty) return;
 
     const state = await StorageService.get();
-    const { isPro, workspaces, activeWorkspaceID, nodes, rootIDs } = state;
+    const { isPro, workspaces, activeWorkspaceID, nodes, rootIDs, groups } = state;
 
     if (!isPro || !Array.isArray(workspaces)) {
         isDirty = false;
         return;
     }
 
-    const contentStr = JSON.stringify({ workspaces, activeWorkspaceID, nodes, rootIDs });
+    const contentStr = JSON.stringify({ workspaces, activeWorkspaceID, nodes, rootIDs, groups });
     const currHash = fastHash(contentStr);
 
     if (currHash === lastPushedHash) {
@@ -189,6 +189,7 @@ export async function flushPendingSync(): Promise<void> {
         activeWorkspaceID: activeWorkspaceID ?? "",
         nodes: nodes ?? {},
         rootIDs: rootIDs ?? [],
+        groups: groups ?? {}
     };
 
     const result = await pushSync(payload);
@@ -237,6 +238,7 @@ export async function initializeSync(): Promise<void> {
             activeWorkspaceID: remotePayload.activeWorkspaceID,
             nodes: remotePayload.nodes,
             rootIDs: remotePayload.rootIDs,
+            groups: remotePayload.groups
         }));
     }
 }

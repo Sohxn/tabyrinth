@@ -7,7 +7,7 @@ export interface TabGroup {
     id: string;
     type: GroupType;
     workspaceID: string;
-    rootID: string | number;
+    rootID?: string | number;
     nodeIDs: (string | number)[];
 }
 

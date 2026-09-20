@@ -1,8 +1,9 @@
-import { type TreeStorageSchema, type TabNode, type TabNote } from "../types";
+import { type TreeStorageSchema, type TabNode, type TabNote, type TabGroup } from "../types";
 
 const InitState: TreeStorageSchema = {
   nodes: {},
   rootIDs: [],
+  groups: {},
   lastActiveTabID: null,
   activeMediaTabID: null,
   activeMediaAccentColor: '#ffffff',
@@ -23,9 +24,60 @@ const enqueue = <T>(task: () => Promise<T>): Promise<T> => {
   });
 };
 
+// helper for derive groups
+function collectDescendants(nodeID: string | number, nodes: Record<string | number, TabNode>): (string | number)[] {
+  const node = nodes[nodeID];
+  if (!node) return [];
+  let all: (string | number)[] = [nodeID];
+  for (const childID of node.childrenIDs) {
+    all = all.concat(collectDescendants(childID, nodes));
+  }
+  return all;
+}
+
+// derive groups from tabs
+function deriveGroups(nodes: Record<string | number, TabNode>, rootIDs: (string | number)[]): Record<string, TabGroup> {
+  const groups: Record<string, TabGroup> = {};
+  const ghostsByWorkspace: Record<string, (string | number)[]> = {};
+
+  rootIDs.forEach((rootID) => {
+    const root = nodes[rootID];
+    if (!root) return;
+    const hasChildren = root.childrenIDs && root.childrenIDs.length > 0;
+    const wsID = root.workspaceID || 'workspace-default';
+
+    if (hasChildren) {
+      const groupID = `chain_${rootID}`;
+      groups[groupID] = {
+        id: groupID,
+        type: 'chain',
+        workspaceID: wsID,
+        rootID,
+        nodeIDs: collectDescendants(rootID, nodes)
+      };
+    } else if (root.isClosed) {
+      if (!ghostsByWorkspace[wsID]) ghostsByWorkspace[wsID] = [];
+      ghostsByWorkspace[wsID].push(rootID);
+    }
+  });
+
+  Object.entries(ghostsByWorkspace).forEach(([wsID, nodeIDs]) => {
+    const groupID = `ghost_${wsID}`;
+    groups[groupID] = {
+      id: groupID,
+      type: 'ghost',
+      workspaceID: wsID,
+      nodeIDs
+    };
+  });
+
+  return groups;
+}
+
 function sanitizeTree(nodes: Record<string | number, TabNode>): {
   nodes: Record<string | number, TabNode>;
   rootIDs: (string | number)[];
+  groups: Record<string, TabGroup>;
 } {
   const cleanedNodes: Record<string | number, TabNode> = {};
 
@@ -56,7 +108,9 @@ function sanitizeTree(nodes: Record<string | number, TabNode>): {
     cleanedNodes[node.id] = { ...node, childrenIDs: validChildIDs };
   });
 
-  return { nodes: cleanedNodes, rootIDs };
+  const groups = deriveGroups(cleanedNodes, rootIDs)
+
+  return { nodes: cleanedNodes, rootIDs, groups };
 }
 
 export const StorageService = {
@@ -70,10 +124,10 @@ export const StorageService = {
 
       const patch = await fn(state);
       const mergedNodes = patch.nodes ? { ...state.nodes, ...patch.nodes } : state.nodes;
-      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots } = sanitizeTree(mergedNodes);
+      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots, groups } = sanitizeTree(mergedNodes);
 
       await chrome.storage.local.set({
-        tabTreeData: { ...state, ...patch, nodes: sanitizedNodes, rootIDs: sanitizedRoots }
+        tabTreeData: { ...state, ...patch, nodes: sanitizedNodes, rootIDs: sanitizedRoots, groups }
       });
     });
   },
@@ -93,7 +147,7 @@ export const StorageService = {
       const mergedNodes = patch.nodes
         ? { ...current.nodes, ...patch.nodes }
         : current.nodes;
-      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots } = sanitizeTree(mergedNodes);
+      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots, groups } = sanitizeTree(mergedNodes);
 
       await chrome.storage.local.set({
         tabTreeData: {
@@ -101,6 +155,7 @@ export const StorageService = {
           ...patch,
           nodes: sanitizedNodes,
           rootIDs: sanitizedRoots,
+          groups
         },
       });
     });
@@ -122,10 +177,19 @@ export const StorageService = {
         },
       };
 
+      // update: tree consistency 
+      const {
+        nodes: sanitizedNodes,
+        rootIDs: sanitizedRoots,
+        groups
+      } = sanitizeTree(updatedNodes);
+
       await chrome.storage.local.set({
         tabTreeData: {
           ...state,
-          nodes: updatedNodes
+          nodes: sanitizedNodes,
+          roots: sanitizedRoots,
+          groups
         },
       });
     });
@@ -166,10 +230,10 @@ export const StorageService = {
         }
       }
 
-      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots } = sanitizeTree(updatedNodes);
+      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots, groups } = sanitizeTree(updatedNodes);
 
       await chrome.storage.local.set({
-        tabTreeData: { ...state, nodes: sanitizedNodes, rootIDs: sanitizedRoots },
+        tabTreeData: { ...state, nodes: sanitizedNodes, rootIDs: sanitizedRoots, groups },
       });
     });
   },
@@ -191,10 +255,10 @@ export const StorageService = {
         },
       };
 
-      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots } = sanitizeTree(updatedNodes);
+      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots, groups } = sanitizeTree(updatedNodes);
 
       await chrome.storage.local.set({
-        tabTreeData: { ...state, nodes: sanitizedNodes, rootIDs: sanitizedRoots },
+        tabTreeData: { ...state, nodes: sanitizedNodes, rootIDs: sanitizedRoots, groups },
       });
     });
   },
@@ -228,13 +292,14 @@ export const StorageService = {
         };
       }
 
-      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots } = sanitizeTree(freshNodes);
+      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots, groups } = sanitizeTree(freshNodes);
 
       await chrome.storage.local.set({
         tabTreeData: {
           ...state,
           nodes: sanitizedNodes,
-          rootIDs: sanitizedRoots
+          rootIDs: sanitizedRoots,
+          groups
         }
       });
     });
@@ -256,13 +321,14 @@ export const StorageService = {
         n.childrenIDs = n.childrenIDs.filter((id) => id !== nodeId);
       });
 
-      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots } = sanitizeTree(state.nodes);
+      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots, groups } = sanitizeTree(state.nodes);
 
       await chrome.storage.local.set({
         tabTreeData: {
           ...state,
           nodes: sanitizedNodes,
           rootIDs: sanitizedRoots,
+          groups
         },
       });
     });
@@ -326,19 +392,27 @@ export const StorageService = {
         }
       }
 
-      let updatedRoots = [
-        ...state.rootIDs
-      ];
+      // revert if doesnt work
+      // let updatedRoots = [
+      //   ...state.rootIDs
+      // ];
 
-      if (updatedRoots.includes(oldNodeID)) {
-        updatedRoots = updatedRoots.map((id) => (id === oldNodeID ? newID : id));
-      }
+      // if (updatedRoots.includes(oldNodeID)) {
+      //   updatedRoots = updatedRoots.map((id) => (id === oldNodeID ? newID : id));
+      // }
+
+      const {
+        nodes: sanitizedNodes,
+        rootIDs: sanitizedRoots,
+        groups
+      } = sanitizeTree(updatedNodes);
 
       await chrome.storage.local.set({
         tabTreeData: {
           ...state,
-          nodes: updatedNodes,
-          rootIDs: updatedRoots,
+          nodes: sanitizedNodes,
+          rootIDs: sanitizedRoots,
+          groups,
           lastActiveTabID: newID
         }
       });
@@ -377,14 +451,16 @@ export const StorageService = {
 
       const {
         nodes: sanitizedNodes,
-        rootIDs: sanitizedRoots
+        rootIDs: sanitizedRoots,
+        groups
       } = sanitizeTree(updatedNodes);
 
       await chrome.storage.local.set({
         tabTreeData: {
           ...state,
           nodes: sanitizedNodes,
-          rootIDs: sanitizedRoots
+          rootIDs: sanitizedRoots,
+          groups
         }
       });
     });
@@ -407,14 +483,16 @@ export const StorageService = {
 
       const {
         nodes: sanitizedNodes,
-        rootIDs: sanitizedRoots
+        rootIDs: sanitizedRoots,
+        groups
       } = sanitizeTree(updatedNodes);
 
       await chrome.storage.local.set({
         tabTreeData: {
           ...state,
           nodes: sanitizedNodes,
-          rootIDs: sanitizedRoots
+          rootIDs: sanitizedRoots,
+          groups
         },
       });
     });
