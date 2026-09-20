@@ -35,6 +35,16 @@ function collectDescendants(nodeID: string | number, nodes: Record<string | numb
   return all;
 }
 
+function isEntirelyClosed(nodeID: string | number, nodes: Record<string | number, TabNode>): boolean {
+  const node = nodes[nodeID];
+  if (!node) return true;
+  if (!node.isClosed) return false;
+  for (const childID of node.childrenIDs) {
+    if (!isEntirelyClosed(childID, nodes)) return false;
+  }
+  return true;
+}
+
 // derive groups from tabs
 function deriveGroups(nodes: Record<string | number, TabNode>, rootIDs: (string | number)[]): Record<string, TabGroup> {
   const groups: Record<string, TabGroup> = {};
@@ -47,14 +57,20 @@ function deriveGroups(nodes: Record<string | number, TabNode>, rootIDs: (string 
     const wsID = root.workspaceID || 'workspace-default';
 
     if (hasChildren) {
-      const groupID = `chain_${rootID}`;
-      groups[groupID] = {
-        id: groupID,
-        type: 'chain',
-        workspaceID: wsID,
-        rootID,
-        nodeIDs: collectDescendants(rootID, nodes)
-      };
+      const wholeChainClosed = isEntirelyClosed(rootID, nodes);
+      if (wholeChainClosed) {
+        if (!ghostsByWorkspace[wsID]) ghostsByWorkspace[wsID] = [];
+        ghostsByWorkspace[wsID].push(rootID);
+      } else {
+        const groupID = `chain_${rootID}`;
+        groups[groupID] = {
+          id: groupID,
+          type: 'chain',
+          workspaceID: wsID,
+          rootID,
+          nodeIDs: collectDescendants(rootID, nodes)
+        };
+      }
     } else if (root.isClosed) {
       if (!ghostsByWorkspace[wsID]) ghostsByWorkspace[wsID] = [];
       ghostsByWorkspace[wsID].push(rootID);

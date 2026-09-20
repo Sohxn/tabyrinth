@@ -70,15 +70,14 @@ export function WorkspaceNotch() {
             <div
                 onClick={() => setIsExpanded(true)}
                 onDragOver={handleNotchDragOver}
-                className="flex items-center justify-between rounded-3xl h-10 w-full max-w-xs bg-black/80 border border-white/10 px-3 mx-4 
+                className="flex items-center justify-between rounded-3xl h-10 w-full 
+                max-w-xs bg-black/80 border border-white/10 px-3 mx-4 
                 cursor-pointer hover:border-orange-500/50 transition-all duration-200 group relative z-20">
                 <div className="flex items-center gap-2 overflow-hidden">
-                    <svg
-                        className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-110"
+                    <svg className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-110"
                         fill="currentColor"
                         style={{ color: getWorkspaceColor(activeWorkspace, activeWSIndex) }}
-                        viewBox="0 0 20 20"
-                    >
+                        viewBox="0 0 20 20">
                         <path d="M2 6a2 2 0 012-2h4l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                     </svg>
                     <span className="truncate text-xs font-semibold text-gray-200 capitalize">
@@ -100,22 +99,22 @@ export function WorkspaceNotch() {
             {isExpanded && (
                 <div
                     onClick={() => setIsExpanded(false)}
-                    className="fixed inset-0 z-50 flex items-start justify-center pt-14 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
-                >
+                    className="fixed inset-0 z-50 flex items-start justify-center 
+                    pt-14 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
                     <div
                         onClick={(e) => e.stopPropagation()}
-                        className="w-80 bg-[#181a1f] border border-white/15 rounded-3xl p-4 shadow-2xl flex flex-col gap-3 animate-in zoom-in-95 duration-200"
-                    >
+                        className="w-80 bg-[#181a1f] border border-white/15 rounded-3xl p-4 shadow-2xl flex flex-col gap-3 animate-in zoom-in-95 duration-200">
                         {/* Overlay Header */}
-                        <div className="flex items-center justify-between border-b border-white/10 pb-2.5 px-1">
+                        <div className="flex items-center justify-between pb-2.5 px-1">
                             <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">
                                 Workspaces
                             </span>
                             <button
                                 onClick={() => setShowCreateForm(!showCreateForm)}
-                                className="text-[11px] font-semibold text-orange-400 hover:text-orange-300 transition-colors"
-                            >
-                                {showCreateForm ? 'Cancel' : '+ New Group'}
+                                className="text-[11px] font-semibold text-white 
+                                bg-orange-500 px-2 py-1.5 rounded-2xl
+                                hover:text-black hover:bg-white transition-colors">
+                                {showCreateForm ? '⛌' : 'New Group'}
                             </button>
                         </div>
 
@@ -126,14 +125,13 @@ export function WorkspaceNotch() {
                                     type="text"
                                     value={workspaceName}
                                     onChange={(e) => setWorkspaceName(e.target.value)}
-                                    placeholder="Group name..."
+                                    placeholder="Group name"
                                     autoFocus
                                     className="flex-1 bg-black/50 border border-white/15 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-orange-500"
                                 />
                                 <button
                                     type="submit"
-                                    className="px-3 py-1.5 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-xs font-semibold"
-                                >
+                                    className="px-3 py-2 my-0.5 bg-orange-600 hover:bg-orange-500 text-white rounded-xl text-xs font-semibold">
                                     Add
                                 </button>
                             </form>
@@ -152,18 +150,14 @@ export function WorkspaceNotch() {
                                         onDragOver={(e) => e.preventDefault()}
                                         onDrop={(e) => handleDropOnWorkspace(e, ws.id)}
                                         onClick={() => handleSelectWorkspace(ws.id)}
-                                        className={`flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer group ${isActive
-                                            ? 'bg-white/10 border-orange-500/60 shadow-md'
-                                            : 'bg-black/30 border-white/5 hover:border-white/20 hover:bg-white/5'
-                                            }`}
-                                    >
+                                        className={`flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer group 
+                                            ${isActive ? 'bg-white/10 border-orange-500/60 shadow-md' : 'bg-black/30 border-white/5 hover:border-white/20 hover:bg-white/5'}`}>
                                         <div className="flex items-center gap-3 truncate">
                                             <svg
                                                 className="w-4 h-4 shrink-0 transition-transform group-hover:scale-110"
                                                 fill="currentColor"
                                                 style={{ color }}
-                                                viewBox="0 0 20 20"
-                                            >
+                                                viewBox="0 0 20 20">
                                                 <path d="M2 6a2 2 0 012-2h4l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" />
                                             </svg>
                                             <span className="text-xs font-semibold text-gray-200 capitalize truncate">

@@ -174,7 +174,7 @@ export default function App() {
         <div ref={treeContainerRef} className="flex-1 overflow-y-auto no-scrollbar">
           {!regularRootIDs || regularRootIDs.length === 0 ? (
             <div className="flex flex-col items-center justify-center m-2">
-              <p className="text-gray-400 font-bold text-lg text-center">No active tabs in this group</p>
+              <p className="text-gray-400 font-bold text-lg text-center">No active tabs in this workspace</p>
             </div>
           ) : (
             <div className="flex flex-col gap-1">

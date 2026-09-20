@@ -215,14 +215,15 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
     },
 
     getRegularRootIDs: (workspaceID: string) => {
-        const { rootIDs, nodes } = get();
+        const { rootIDs, nodes, groups } = get();
+        const ghostGroup = groups[`ghost_${workspaceID}`];
+        const ghostRootIDs = new Set(ghostGroup?.nodeIDs ?? []);
         return rootIDs.filter((id) => {
             const node = nodes[id];
             if (!node) return false;
             const wsID = node.workspaceID || DEFAULT_WORKSPACE.id;
             if (wsID !== workspaceID) return false;
-            const isStandaloneGhost = node.isClosed && (!node.childrenIDs || node.childrenIDs.length === 0);
-            return !isStandaloneGhost;
+            return !ghostRootIDs.has(id);
         });
     },
 
