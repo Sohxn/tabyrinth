@@ -40,6 +40,7 @@ interface TreeStoreState {
 
     //workspace
     createWorkspace: (name: string) => string;
+    renameWorkspace: (WorkspaceID: string, name: string) => void;
     assignTabToWorkspace: (nodeID: string, workspaceID: string) => void;
     getTabsByWorkspace: (workspaceID: string) => (string | number)[];
     setActiveWorkspace: (workspaceID: string) => Promise<void>;
@@ -178,6 +179,28 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
         });
 
         return newspace.id;
+    },
+
+    renameWorkspace: (workspaceID: string, name: string) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+
+        set((state) => {
+            const updatedWorkspaces = state.workspaces.map((w) =>
+                w.id === workspaceID ? {
+                    ...w,
+                    name: trimmed
+                } : w
+            );
+
+            StorageService.set({
+                workspaces: updatedWorkspaces
+            });
+
+            return {
+                workspaces: updatedWorkspaces
+            };
+        });
     },
 
     assignTabToWorkspace: (nodeID: string, workspaceID: string) => {

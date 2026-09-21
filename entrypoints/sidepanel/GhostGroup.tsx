@@ -16,7 +16,7 @@ export function GhostGroup({ group, isResettingGhosts }: GhostGroupProps) {
         <div className="flex flex-col mt-3">
             <button
                 onClick={() => setIsExpanded((prev) => !prev)}
-                className="flex items-center gap-2 px-3 h-8 rounded-full text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors cursor-pointer w-fit"
+                className="flex items-center gap-2 px-3 h-8 rounded-full bg-black text-white hover:text-white hover:bg-white/5 transition-colors cursor-pointer w-fit"
             >
                 <span className={`text-[9px] transition-transform duration-150 inline-block ${isExpanded ? 'rotate-90' : ''}`}>▶</span>
                 <span className="text-[11px] font-semibold uppercase tracking-wide">Closed tabs</span>

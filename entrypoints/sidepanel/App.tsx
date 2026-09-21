@@ -5,7 +5,7 @@ import { type TreeStorageSchema } from '@/src/types';
 import { StorageService } from '@/src/services/storage';
 import { MediaCard } from './MediaCard';
 import { WorkspaceNotch } from './WorkspaceNotch';
-import { GearIcon, ArrowClockwiseIcon, MagnifyingGlassIcon, PlusIcon, Ghost } from '@phosphor-icons/react';
+import { GearIcon, ArrowClockwiseIcon, MagnifyingGlassIcon, PlusIcon, Ghost, RowsPlusTopIcon, SlidersHorizontalIcon, CaretCircleDownIcon } from '@phosphor-icons/react';
 
 // only for sync 
 import { createCheckoutSession, activateLicenseKey, getLicenseKey } from '@/src/services/sync';
@@ -178,9 +178,22 @@ export default function App() {
             </div>
           ) : (
             <div className="flex flex-col gap-1">
-              {regularRootIDs.map((rootID) => (
+              {/* {regularRootIDs.map((rootID) => (
                 <TreeNode key={rootID} nodeID={rootID} depth={0} isResettingGhosts={isResettingGhosts} />
-              ))}
+              ))} */}
+              {regularRootIDs.map((rootID) => {
+                const node = nodes[rootID];
+                const isChain = node && node.childrenIDs && node.childrenIDs.length > 0;
+
+                // bordered groups
+                return isChain ?
+                  (<div key={rootID} className="border-2 border-white/15 rounded-3xl py-2 px-2">
+                    <TreeNode nodeID={rootID} depth={0} isResettingGhosts={isResettingGhosts} />
+                  </div>) :
+                  (
+                    <TreeNode key={rootID} nodeID={rootID} depth={0} isResettingGhosts={isResettingGhosts} />
+                  );
+              })}
             </div>
           )}
 
@@ -189,13 +202,15 @@ export default function App() {
           {/* new tab button */}
           <button
             onClick={createNewTab}
-            className="flex items-center gap-2.5 h-12 w-full px-2 py-1.5 mt-1 rounded-3xl 
+            className="flex items-center gap-2.5 h-12 w-full px-2 py-1.5 mt-1 rounded-2xl 
           text-gray-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer 
-          group justify-center items-center border-2 border-white-100 shrink-0 mt-4">
-            <div className="w-5 h-5 flex items-center justify-center text-gray-400 group-hover:text-gray-300 transition-colors">
-              <span className="text-lg font-bold leading-none">+</span>
+          group justify-center items-center bg-black/20 border-2 border-white/20 shrink-0 mt-4">
+            <div className="w-5 h-5 flex items-center justify-center text-white group-hover:text-gray-300 transition-colors">
+              <div className="text-lg font-bold leading-none">
+                <RowsPlusTopIcon size={24} weight='fill' />
+              </div>
             </div>
-            <span className="text-xs font-medium">New tab</span>
+            <span className="text-sm text-white font-medium">New tab</span>
           </button>
         </div>
 
@@ -218,7 +233,7 @@ export default function App() {
 
         {/* settings button */}
         <button onClick={handleOpenSettings} className='flex h-12 justify-center items-center'>
-          <GearIcon size={32} />
+          <SlidersHorizontalIcon size={32} weight="fill" />
         </button>
       </div>
 

@@ -2,7 +2,7 @@ import React, { useState, type SyntheticEvent } from 'react';
 import { useTreeStore } from '../../src/store/useTreeStore';
 import { StorageService } from '@/src/services/storage';
 import { type TabNode } from '@/src/types';
-import { PencilSimpleIcon } from '@phosphor-icons/react';
+import { PencilSimpleIcon, CaretCircleDownIcon, CaretCircleRightIcon } from '@phosphor-icons/react';
 
 interface TreeNodeProps {
   nodeID: string | number;
@@ -93,7 +93,7 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
         onMouseLeave={() => setIsHovered(false)}
         onClick={handleTabClick}
         style={{ marginLeft: (depth === 0 || isActive || !hasChildren) ? 0 : `${depth * 16 + 9}px` }}
-        className={`group relative flex items-center h-12 pr-2 my-[1px] rounded-2xl 
+        className={`group relative flex items-center h-12 pr-1 my-[1px] rounded-2xl 
             text-xs cursor-pointer transition-colors border-2 border-[#333333] 
             ${isActive ? 'bg-[#3c516f] text-bold font-medium' : node.isClosed
             ? 'bg-black text-white opacity-40'
@@ -105,12 +105,11 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
             e.stopPropagation();
             toggleExpand(node.id);
           }}
-          className={`w-4 h-4 flex items-center justify-center rounded hover:bg-[#483a54] mr-1 
-              ${hasChildren ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+
+          className={`flex items-center justify-center rounded hover:bg-[#483a54] ml-3 mr-3 ${hasChildren ? 'opacity-100 w-4 h-4' : 'opacity-0 pointer-events-none w-0 h-0'}`}>
           <span
-            className={`text-[9px] text-gray-400 transition-transform duration-150 inline-block 
-              ${isExpanded ? 'rotate-90' : ''}`}>
-            ▶
+            className={`text-[9px] text-gray-400 transition-transform duration-150 inline-block ${isExpanded ? 'rotate-90' : ''}`}>
+            <CaretCircleRightIcon size={24} />
           </span>
         </button>
         {node.favIconURL ? (
