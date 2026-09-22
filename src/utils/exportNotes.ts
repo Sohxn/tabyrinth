@@ -7,8 +7,8 @@ const turndownservice = new TurnDownService({ headingStyle: "atx", codeBlockStyl
 // rules for markdown
 turndownservice.addRule('sup', {
     filter: 'sup',
-    replacement: function (_, node) {
-        return turndownservice.turndown(node.innerHTML);
+    replacement: function (content) {
+        return `<sup>${content}</sup>`
     }
 });
 

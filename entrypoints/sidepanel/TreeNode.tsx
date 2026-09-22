@@ -77,7 +77,7 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
   const notesOverlay = showNotes ? createPortal(
     <div
       onClick={() => setShowNotes(false)}
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+      className="fixed inset-0 top-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
       <div
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-md bg-[#181a1f] border border-white/15 
@@ -101,7 +101,7 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
         {notesCount > 0 ? (
           <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
             {node.notes?.map((note) => (
-              <div key={note.id} className="group/note relative bg-black p-2 rounded-lg text-sm text-gray-200">
+              <div key={note.id} className="group/note relative bg-black p-4 mb-4 border-2 border-white/30 rounded-xl text-[16px] text-gray-200">
                 {/* unchanged: still using your existing sanitizeHTML + dangerouslySetInnerHTML pattern */}
                 <div
                   className="whitespace-pre-wrap break-words pr-4"
@@ -119,18 +119,17 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
           <p className="text-[13px] font-bold text-gray-400 p-2">No notes yet. Highlight text & right-click to add.</p>
         )}
 
-        {/* unchanged: still your plain input, not the contentEditable toolbar version */}
         <form onSubmit={handleManualNoteToTab} className="flex gap-1 pt-1 shrink-0">
           <input
             type="text"
             value={newNoteInput}
             onChange={(e) => setNewNoteInput(e.target.value)}
             placeholder="Type a quick note..."
-            className="flex-1 mr-2 bg-black rounded-lg px-2 py-1 h-8 text-[11px] text-gray-200" />
+            className="flex-1 mr-2 bg-black rounded-xl px-2 py-1 h-10 text-[14px] text-white" />
 
           <button
             type="submit"
-            className="px-2 py-1 bg-orange-500 hover:bg-orange-700 h-8 text-white rounded-lg text-[10px] font-medium transition-colors">
+            className="px-2 py-1 bg-orange-500 hover:bg-orange-700 h-9 text-white rounded-lg text-[14px] font-bold transition-colors">
             Add
           </button>
 
@@ -242,12 +241,6 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
           )}
         </div>
       </div>
-      {/*
-        the entire inline drawer block is removed from here. 
-        It now lives above as `notesOverlay` and is
-        rendered via portal instead of inline, so it no longer pushes
-        sibling content around or gets clipped by this node's own box. 
-      */}
 
       {notesOverlay}
 

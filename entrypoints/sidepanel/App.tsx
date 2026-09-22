@@ -200,9 +200,7 @@ export default function App() {
             </div>
           ) : (
             <div className="flex flex-col gap-1">
-              {/* {regularRootIDs.map((rootID) => (
-                <TreeNode key={rootID} nodeID={rootID} depth={0} isResettingGhosts={isResettingGhosts} />
-              ))} */}
+
               {regularRootIDs.map((rootID) => {
                 const node = nodes[rootID];
                 const isChain = node && node.childrenIDs && node.childrenIDs.length > 0;

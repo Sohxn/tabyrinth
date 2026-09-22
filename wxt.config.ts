@@ -14,7 +14,9 @@ export default defineConfig({
       'alarms',
       'contextMenus',
       'idle',
-      'downloads'
+      'downloads',
+      'scripting',
+      'activeTab'
     ],
     action: {},
     commands: {

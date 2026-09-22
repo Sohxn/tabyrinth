@@ -1,5 +1,5 @@
 const allowedTags = new Set([
-    'P', 'BR', 'B', 'STRONG', 'I', 'EM', 'CODE', 'PRE', 'UL', 'OL', 'LI', 'SUP'
+    'P', 'BR', 'B', 'STRONG', 'I', 'EM', 'CODE', 'PRE', 'UL', 'OL', 'LI', 'SUP', 'A'
 ])
 
 export function sanitizeHTML(rawString: string): string {
@@ -18,6 +18,7 @@ export function sanitizeHTML(rawString: string): string {
 
         const element = node as HTMLElement;
         const tag = element.tagName;
+
         // skip these categories
         if (tag === 'SCRIPT' || tag === 'STYLE' || tag === 'IMG') {
             return [];
@@ -35,6 +36,12 @@ export function sanitizeHTML(rawString: string): string {
         }
 
         const clean = doc.createElement(tag.toLowerCase());
+        if (tag === 'A') {
+            const href = element.getAttribute('href');
+            if (href && (href.startsWith('http') || href.startsWith('/'))) {
+                clean.setAttribute('href', href);
+            }
+        }
         childResults.forEach((child) => clean.appendChild(child));
         return [clean];
     }

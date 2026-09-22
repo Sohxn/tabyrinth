@@ -141,12 +141,28 @@ export default defineBackground(() => {
 
   chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (info.menuItemId === "add-note-to-tab" && tab?.id) {
-      const noteText = info.selectionText || info.pageUrl || "";
-      if (noteText.trim().length > 0) {
-        const html = plainTextToParagraph(noteText);
-        if (html) {
-          await StorageService.addNoteToTab(tab.id, html, info.pageUrl);
+      try {
+        const injectionResults = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            const selection = window.getSelection();
+            if (!selection || selection.rangeCount === 0) return "";
+            const container = document.createElement("div");
+            container.appendChild(selection.getRangeAt(0).cloneContents());
+            container.querySelectorAll('a').forEach(a => a.href = a.href);
+            return container.innerHTML;
+          }
+        });
+
+        const rawHTML = injectionResults[0]?.result || info.pageUrl || "";
+
+        if (rawHTML.trim().length > 0) {
+          const htmlToSave = rawHTML.includes('<') ? rawHTML : plainTextToParagraph(rawHTML);
+          await StorageService.addNoteToTab(tab.id, htmlToSave, info.pageUrl);
         }
+      } catch (err) {
+        // logging
+        console.error('[ERROR] Failed to capture selection: ', err);
       }
     }
   });
