@@ -1,6 +1,8 @@
 import React, { useState, type SyntheticEvent } from 'react';
 import { useTreeStore } from '../../src/store/useTreeStore';
 import { StorageService } from '@/src/services/storage';
+import { createPortal } from 'react-dom';
+import { sanitizeHTML } from '@/src/utils/sanitizeHTML';
 import { type TabNode } from '@/src/types';
 import { PencilSimpleIcon, CaretCircleDownIcon, CaretCircleRightIcon } from '@phosphor-icons/react';
 
@@ -49,9 +51,6 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
     }, 300);
   }
 
-  // reopen closed tabs (history)
-  // ** race condtion: fixed 
-  //** fix: call from background worker instead of direct call
   const handleTabClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
 
@@ -66,7 +65,6 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
     }
   };
 
-  // add manual note
   const handleManualNoteToTab = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!newNoteInput.trim()) return;
@@ -74,6 +72,75 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
     setNewNoteInput('');
   };
 
+
+  // overlay: notes in focus 
+  const notesOverlay = showNotes ? createPortal(
+    <div
+      onClick={() => setShowNotes(false)}
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full max-w-md bg-[#181a1f] border border-white/15 
+        rounded-t-3xl p-3 shadow-2xl flex flex-col gap-3 max-h-[80vh] animate-in slide-in-from-bottom duration-200">
+        {/* CHANGED: header now shows "Notes for" + tab title instead of the
+            old generic "Tab Notepad" label, per the reference-name request */}
+        <div className="flex items-center justify-between px-1 pb-2 border-b border-white/10">
+          <div className="flex flex-col overflow-hidden">
+            <span className="text-[10px] text-gray-500 uppercase tracking-wide">Notes for</span>
+            <span className="text-xs font-semibold text-gray-200 truncate max-w-[260px]">
+              {node.title || 'New Tab'}
+            </span>
+          </div>
+          <button
+            onClick={() => setShowNotes(false)}
+            className="text-gray-400 hover:text-white text-sm font-bold px-2 shrink-0">
+            ✕
+          </button>
+        </div>
+
+        {notesCount > 0 ? (
+          <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
+            {node.notes?.map((note) => (
+              <div key={note.id} className="group/note relative bg-black p-2 rounded-lg text-sm text-gray-200">
+                {/* unchanged: still using your existing sanitizeHTML + dangerouslySetInnerHTML pattern */}
+                <div
+                  className="whitespace-pre-wrap break-words pr-4"
+                  dangerouslySetInnerHTML={{ __html: sanitizeHTML(note.content) }} />
+                <button
+                  onClick={() => StorageService.deleteNoteFromTab(node.id, note.id)}
+                  className="absolute top-1 right-1 opacity-0 group-hover/note:opacity-100 text-gray-400 hover:text-red-400 p-0.5 text-[9px]"
+                  title="Delete note">
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-[13px] font-bold text-gray-400 p-2">No notes yet. Highlight text & right-click to add.</p>
+        )}
+
+        {/* unchanged: still your plain input, not the contentEditable toolbar version */}
+        <form onSubmit={handleManualNoteToTab} className="flex gap-1 pt-1 shrink-0">
+          <input
+            type="text"
+            value={newNoteInput}
+            onChange={(e) => setNewNoteInput(e.target.value)}
+            placeholder="Type a quick note..."
+            className="flex-1 mr-2 bg-black rounded-lg px-2 py-1 h-8 text-[11px] text-gray-200" />
+
+          <button
+            type="submit"
+            className="px-2 py-1 bg-orange-500 hover:bg-orange-700 h-8 text-white rounded-lg text-[10px] font-medium transition-colors">
+            Add
+          </button>
+
+        </form>
+      </div>
+    </div>,
+    document.body) : null;
+
+
+  // main render
   return (
     <div draggable={depth === 0}
       onDragStart={handleDragStart}
@@ -97,8 +164,7 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
             text-xs cursor-pointer transition-colors border-2 border-[#333333] 
             ${isActive ? 'bg-[#3c516f] text-bold font-medium' : node.isClosed
             ? 'bg-black text-white opacity-40'
-            : 'text-white bg-black bg-hover:bg-[#3b3b3b]'
-          }`}>
+            : 'text-white bg-black bg-hover:bg-[#3b3b3b]'}`}>
 
         <button
           onClick={(e) => {
@@ -122,9 +188,7 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
           {node.title || 'New Tab'}
         </span>
 
-        {/* interaction badges */}
         <div className='right-1 flex items-center gap-1'>
-          {/* note badge */}
           {notesCount > 0 ?
             (
               <>
@@ -178,51 +242,15 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
           )}
         </div>
       </div>
+      {/*
+        the entire inline drawer block is removed from here. 
+        It now lives above as `notesOverlay` and is
+        rendered via portal instead of inline, so it no longer pushes
+        sibling content around or gets clipped by this node's own box. 
+      */}
 
-      {/* Expandable Tab Notepad Drawer */}
-      {showNotes && (
-        <div className="my-2 p-2 bg-gray-900 rounded-xl text-xs space-y-4 transition-all">
-          <div className="flex items-center justify-between text-[11px] text-white font-semibold pb-2">
-            <span>Tab Notepad</span>
-            <span className="text-[10px] text-gray-500">{notesCount} saved</span>
-          </div>
+      {notesOverlay}
 
-          {notesCount > 0 ? (
-            <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
-              {node.notes?.map((note) => (
-                <div key={note.id} className="group/note relative bg-[#231834] p-2 rounded-lg border border-[#3d2b56] text-[11px] text-gray-200">
-                  <p className="whitespace-pre-wrap break-words pr-4">{note.content}</p>
-                  <button
-                    onClick={() => StorageService.deleteNoteFromTab(node.id, note.id)}
-                    className="absolute top-1 right-1 opacity-0 group-hover/note:opacity-100 text-gray-400 hover:text-red-400 p-0.5 text-[9px]"
-                    title="Delete note">
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-[14px] font-bold text-gray-300 p-2">No notes yet. Highlight text & right-click to add.</p>
-          )}
-
-          <form onSubmit={handleManualNoteToTab} className="flex gap-1 pt-1">
-            <input
-              type="text"
-              value={newNoteInput}
-              onChange={(e) => setNewNoteInput(e.target.value)}
-              placeholder="Type a quick note..."
-              className="flex-1 mr-2 bg-black rounded-lg px-2 py-1 h-8 text-[11px] text-gray-200"
-            />
-            <button
-              type="submit"
-              className="px-2 py-1 bg-orange-500 hover:bg-orange-700 h-8 text-white rounded-lg text-[10px] font-medium transition-colors">
-              Add
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* children — normal folding, no stack collapsing */}
       {hasChildren && isExpanded && (
         <div className="flex flex-col transition-all duration-300 ease-in-out">
           {node.childrenIDs.map((childID) => (

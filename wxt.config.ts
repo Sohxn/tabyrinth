@@ -13,7 +13,8 @@ export default defineConfig({
       'sidePanel',
       'alarms',
       'contextMenus',
-      'idle'
+      'idle',
+      'downloads'
     ],
     action: {},
     commands: {

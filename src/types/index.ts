@@ -1,6 +1,3 @@
-//*added: groups
-//***note: for groups id like to have an uplifted blob like 
-//***note: the craftzdog vid
 export type GroupType = 'chain' | 'ghost';
 
 export interface TabGroup {

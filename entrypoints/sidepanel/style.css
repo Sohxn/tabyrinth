@@ -24,6 +24,7 @@
 @utility no-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;
+
   &::-webkit-scrollbar {
     display: none;
   }
@@ -38,3 +39,41 @@ body {
   user-select: none;
 }
 
+/* per-tab note formatting */
+.note-content ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+
+.note-content ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+}
+
+.note-content code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0 4px;
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+}
+
+.note-content pre {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 6px 8px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-family: ui-monospace, monospace;
+}
+
+.note-content p {
+  margin: 0 0 4px 0;
+}
+
+.note-content p:last-child {
+  margin-bottom: 0;
+}
+
+.note-editor:empty:before {
+  content: attr(data-placeholder);
+  color: #6b7280;
+}

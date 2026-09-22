@@ -1,10 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, act } from 'react';
 import { useTreeStore } from '../../src/store/useTreeStore';
 import { TreeNode } from './TreeNode';
 import { type TreeStorageSchema } from '@/src/types';
 import { StorageService } from '@/src/services/storage';
 import { MediaCard } from './MediaCard';
 import { WorkspaceNotch } from './WorkspaceNotch';
+import { buildMarkdownExport, downloadMarkdown } from '@/src/utils/exportNotes';
+
+// icons
 import { GearIcon, ArrowClockwiseIcon, MagnifyingGlassIcon, PlusIcon, Ghost, RowsPlusTopIcon, SlidersHorizontalIcon, CaretCircleDownIcon } from '@phosphor-icons/react';
 
 // only for sync 
@@ -13,7 +16,8 @@ import { GhostGroup } from './GhostGroup';
 
 
 export default function App() {
-  const { rootIDs, init, syncFromStorage, nodes, activeWorkspaceID, getRegularRootIDs, getGhostGroup, assignTabToWorkspace } = useTreeStore(); const treeContainerRef = useRef<HTMLDivElement>(null);
+  const { rootIDs, init, syncFromStorage, nodes,
+    activeWorkspaceID, getRegularRootIDs, getGhostGroup, assignTabToWorkspace } = useTreeStore(); const treeContainerRef = useRef<HTMLDivElement>(null);
   const [isResettingGhosts, SetIsResettingGhosts] = useState(false);
 
   // settings related
@@ -32,6 +36,24 @@ export default function App() {
   // settings button function
   const handleOpenSettings = () => {
     setIsSettingsOpen(!isSettingsOpen);
+  }
+
+  // markdown export handlers 
+  const handleMarkdownExportWorkspace = async () => {
+    const schema = await StorageService.get();
+    const wsName = (schema.workspaces || []).find(w => w.id === activeWorkspaceID)?.name || 'workspace';
+    const markdown = buildMarkdownExport(
+      schema,
+      {
+        workspaceID: activeWorkspaceID
+      });
+    downloadMarkdown(markdown, `tabyrinth-notes-${wsName.replace(/\s+/g, '-')}-${Date.now()}.md`);
+  }
+
+  const handleMarkdownExportAll = async () => {
+    const schema = await StorageService.get();
+    const markdown = buildMarkdownExport(schema);
+    downloadMarkdown(markdown, `tabyrinth-notes-all-${Date.now()}.md`);
   }
 
   useEffect(() => {
@@ -251,8 +273,27 @@ export default function App() {
             </button>
           </div>
 
+          {/* export workspace */}
+          <div className="bg-white/10 rounded-2xl p-4 flex flex-col gap-2 mb-2">
+            <span className="font-bold text-sm text-white">Export Notes</span>
+            <span className="text-gray-300 text-[13px]">Save your tab notes as a Markdown file.</span>
+            <div className="flex gap-2">
+              <button
+                onClick={handleMarkdownExportWorkspace}
+                className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                This workspace
+              </button>
+              <button
+                onClick={handleMarkdownExportAll}
+                className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                All workspaces
+              </button>
+            </div>
+          </div>
+
           {statusMessage && (
-            <div className={`p-2.5 rounded-xl text-xs mb-3 ${statusMessage.isError ? 'bg-red-600 text-white font-bold text-[14px]' : 'bg-green-600 text-white font-bold text-[14px]'}`}>
+            <div className={`p-2.5 rounded-xl text-xs mb-3 ${statusMessage.isError ? 'bg-red-600 text-white font-bold text-[14px]'
+              : 'bg-green-600 text-white font-bold text-[14px]'}`}>
               {statusMessage.text.toUpperCase()}
             </div>
           )}

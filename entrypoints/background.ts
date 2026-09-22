@@ -3,6 +3,7 @@ import { StorageService } from "@/src/services/storage";
 import { type TabNode } from "@/src/types";
 import { getAccentColorFromURL } from "@/src/utils/mediaColors";
 import { initializeSync, setupSyncListeners } from "@/src/services/sync";
+import { plainTextToParagraph } from '@/src/utils/noteText'
 
 
 // not the best 
@@ -142,7 +143,10 @@ export default defineBackground(() => {
     if (info.menuItemId === "add-note-to-tab" && tab?.id) {
       const noteText = info.selectionText || info.pageUrl || "";
       if (noteText.trim().length > 0) {
-        await StorageService.addNoteToTab(tab.id, noteText, info.pageUrl);
+        const html = plainTextToParagraph(noteText);
+        if (html) {
+          await StorageService.addNoteToTab(tab.id, html, info.pageUrl);
+        }
       }
     }
   });
