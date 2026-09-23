@@ -4,6 +4,7 @@ import { type TabNode } from "@/src/types";
 import { getAccentColorFromURL } from "@/src/utils/mediaColors";
 import { initializeSync, setupSyncListeners } from "@/src/services/sync";
 import { plainTextToParagraph } from '@/src/utils/noteText'
+import { sanitizeHTML } from "@/src/utils/sanitizeHTML";
 
 
 // not the best 
@@ -124,6 +125,18 @@ export default defineBackground(() => {
       title: "Add note to tab",
       contexts: ["selection", "page"]
     });
+
+    chrome.contextMenus.create({
+      id: "pin-image-to-board",
+      title: "Pin image to board",
+      contexts: ["image"]
+    });
+
+    chrome.contextMenus.create({
+      id: "pin-selection-to-board",
+      title: "Pin selection to board",
+      contexts: ["selection"]
+    });
   });
 
   // on startup
@@ -163,6 +176,47 @@ export default defineBackground(() => {
       } catch (err) {
         // logging
         console.error('[ERROR] Failed to capture selection: ', err);
+      }
+    }
+
+    // moodboarding / ideation
+    if (info.menuItemId === "pin-image-to-board" && info.srcUrl) {
+      const state = await StorageService.get();
+      await StorageService.addMoodboardItem({
+        type: 'image',
+        content: info.srcUrl,
+        sourceURL: info.pageUrl,
+        sourceTitle: tab?.title,
+        workspaceID: state.activeWorkspaceID
+      });
+    }
+
+    if (info.menuItemId === "pin-selection-to-board" && tab?.id) {
+      try {
+        const injectionRes = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            const selection = window.getSelection();
+            if (!selection || selection.rangeCount === 0) return "";
+            const container = document.createElement("div");
+            container.appendChild(selection.getRangeAt(0).cloneContents());
+            return container.innerHTML;
+          }
+        });
+
+        const rawHTML = injectionRes[0]?.result || "";
+        if (rawHTML.trim().length > 0) {
+          const state = await StorageService.get();
+          await StorageService.addMoodboardItem({
+            type: 'note',
+            content: sanitizeHTML(rawHTML),
+            sourceURL: info.pageUrl,
+            sourceTitle: tab?.title,
+            workspaceID: state.activeWorkspaceID
+          });
+        }
+      } catch (err) {
+        console.error("[ERROR] Failed to add selection to board: ", err);
       }
     }
   });

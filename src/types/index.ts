@@ -35,6 +35,18 @@ export interface TabNote {
     sourceURL?: string;
 }
 
+// moodboarding / planning
+export interface MoodboardItem {
+    id: string,
+    type: 'image' | 'note';
+    content: string,
+    sourceURL?: string,
+    sourceTitle?: string,
+    workspaceID: string,
+    createdAt: number;
+}
+
+
 // changes in state -> changes in:
 export interface TreeStorageSchema {
     nodes: Record<string | number, TabNode>;
@@ -49,6 +61,7 @@ export interface TreeStorageSchema {
     lastSyncedAt?: number;
     activeWorkspaceID: string;
     workspaces?: Workspace[];
+    moodboardItems?: Record<string, MoodboardItem>;
 }
 
 // grouping, exporting

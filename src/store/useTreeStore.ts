@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { StorageService } from '../services/storage';
-import { type TabNode, type TreeStorageSchema, type Workspace, type TabGroup } from '../types';
+import { type TabNode, type TreeStorageSchema, type Workspace, type TabGroup, type MoodboardItem } from '../types';
 
 export const CHAIN_FOLD_THRESHOLD = 4;
 
@@ -37,6 +37,9 @@ interface TreeStoreState {
     expandedStackIDs: Record<string | number, boolean>;
     searchQuery: string;
 
+    // moodboarding and ideation
+    moodboardItems: Record<string, MoodboardItem>;
+
     // grouping
     groups: Record<string, TabGroup>;
 
@@ -61,9 +64,14 @@ interface TreeStoreState {
     assignTabToWorkspace: (nodeID: string, workspaceID: string) => void;
     getTabsByWorkspace: (workspaceID: string) => (string | number)[];
     setActiveWorkspace: (workspaceID: string) => Promise<void>;
+
     //grouping
     getRegularRootIDs: (WorkspaceID: string) => (string | number)[];
     getGhostGroup: (workspaceID: string) => TabGroup | null;
+
+    //moodboarding and ideation
+    getMoodboardItemsByWorkspace: (workspaceID: string) => MoodboardItem[];
+    deleteMoodboardItem: (itemID: string) => void;
 }
 
 export const useTreeStore = create<TreeStoreState>()((set, get) => ({
@@ -79,6 +87,7 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
     expandedStackIDs: {},
     searchQuery: '',
     activeMediaTabID: null,
+    moodboardItems: {},
 
     init: async () => {
         const data = await StorageService.get();
@@ -104,7 +113,8 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
                 activeMediaTabID: schema.activeMediaTabID ?? null,
                 workspaces: schema.workspaces && schema.workspaces.length > 0 ? schema.workspaces : state.workspaces,
                 activeWorkspaceID: schema.activeWorkspaceID || state.activeWorkspaceID,
-                groups: schema.groups || {}
+                groups: schema.groups || {},
+                moodboardItems: schema.moodboardItems || {}
             }
         })
     },
@@ -277,5 +287,19 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
         await StorageService.set({
             activeWorkspaceID: workspaceID
         })
-    }
+    },
+
+    getMoodboardItemsByWorkspace: (workspaceID: string) => {
+        const { moodboardItems } = get();
+        return Object.values(moodboardItems).filter((i) => i.workspaceID === workspaceID);
+    },
+
+    deleteMoodboardItem: (itemID: string) => {
+        set((state) => {
+            const updated = { ...state.moodboardItems };
+            delete updated[itemID];
+            return { moodboardItems: updated };
+        });
+        StorageService.deleteMoodboardItem(itemID);
+    },
 }));

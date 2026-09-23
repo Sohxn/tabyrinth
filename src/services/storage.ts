@@ -1,4 +1,4 @@
-import { type TreeStorageSchema, type TabNode, type TabNote, type TabGroup } from "../types";
+import { type TreeStorageSchema, type TabNode, type TabNote, type TabGroup, type MoodboardItem } from "../types";
 
 const InitState: TreeStorageSchema = {
   nodes: {},
@@ -9,6 +9,7 @@ const InitState: TreeStorageSchema = {
   activeMediaAccentColor: '#ffffff',
   isPro: false,
   activeWorkspaceID: 'workspace-default',
+  moodboardItems: {},
   workspaces: [{
     id: 'workspace-default',
     name: 'untitled',
@@ -510,6 +511,46 @@ export const StorageService = {
           rootIDs: sanitizedRoots,
           groups
         },
+      });
+    });
+  },
+
+  // moodboard / ideation related
+  async addMoodboardItem(item: Omit<MoodboardItem, 'id' | 'createdAt'>): Promise<MoodboardItem> {
+    return enqueue(async () => {
+      const data = await chrome.storage.local.get('tabTreeData');
+      const state = (data.tabTreeData as TreeStorageSchema) || InitState;
+
+      const newItem: MoodboardItem = {
+        ...item,
+        id: `board_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        createdAt: Date.now(),
+      };
+
+      const updatedMoodboardItems = {
+        ...(state.moodboardItems || {}),
+        [newItem.id]: newItem,
+      };
+
+      await chrome.storage.local.set({
+        tabTreeData: { ...state, moodboardItems: updatedMoodboardItems },
+      });
+
+      return newItem;
+    });
+  },
+
+  async deleteMoodboardItem(itemID: string): Promise<void> {
+    return enqueue(async () => {
+      const data = await chrome.storage.local.get('tabTreeData');
+      const state = (data.tabTreeData as TreeStorageSchema) || InitState;
+      if (!state.moodboardItems?.[itemID]) return;
+
+      const updatedMoodboardItems = { ...state.moodboardItems };
+      delete updatedMoodboardItems[itemID];
+
+      await chrome.storage.local.set({
+        tabTreeData: { ...state, moodboardItems: updatedMoodboardItems },
       });
     });
   },
