@@ -6,6 +6,7 @@ import { StorageService } from '@/src/services/storage';
 import { MediaCard } from './MediaCard';
 import { WorkspaceNotch } from './WorkspaceNotch';
 import { buildMarkdownExport, downloadMarkdown } from '@/src/utils/exportNotes';
+import { exportToPDF } from '@/src/utils/exportPDF';
 
 // icons
 import { GearIcon, ArrowClockwiseIcon, MagnifyingGlassIcon, PlusIcon, Ghost, RowsPlusTopIcon, SlidersHorizontalIcon, CaretCircleDownIcon } from '@phosphor-icons/react';
@@ -54,6 +55,17 @@ export default function App() {
     const schema = await StorageService.get();
     const markdown = buildMarkdownExport(schema);
     downloadMarkdown(markdown, `tabyrinth-notes-all-${Date.now()}.md`);
+  }
+
+  // PDF export handlers
+  const handlePDFExportWorkspace = async () => {
+    const schema = await StorageService.get();
+    await exportToPDF(schema, { workspaceID: activeWorkspaceID });
+  }
+
+  const handlePDFExportAll = async () => {
+    const schema = await StorageService.get();
+    await exportToPDF(schema);
   }
 
   useEffect(() => {
@@ -271,23 +283,44 @@ export default function App() {
             </button>
           </div>
 
-          {/* export workspace */}
-          <div className="bg-white/10 rounded-2xl p-4 flex flex-col gap-2 mb-2">
+          {/* export workspace -> MD and PDF */}
+          <div className="bg-white/10 rounded-2xl p-4 flex flex-col gap-3 mb-2">
             <span className="font-bold text-sm text-white">Export Notes</span>
-            <span className="text-gray-300 text-[13px]">Save your tab notes as a Markdown file.</span>
-            <div className="flex gap-2">
-              <button
-                onClick={handleMarkdownExportWorkspace}
-                className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                This workspace
-              </button>
-              <button
-                onClick={handleMarkdownExportAll}
-                className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                All workspaces
-              </button>
+            {/* separation */}
+            <div className='flex flex-col gap-1.5'>
+              <span className="text-gray-300 text-[13px]">Save your tab notes to Markdown</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleMarkdownExportWorkspace}
+                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                  This workspace
+                </button>
+                <button
+                  onClick={handleMarkdownExportAll}
+                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                  All workspaces
+                </button>
+              </div>
+            </div>
+
+            <div className='flex flex-col gap-1.6'>
+              <span className="text-gray-400 text-[11px] uppercase tracking-wide">PDF</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={handlePDFExportWorkspace}
+                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                  This workspace
+                </button>
+                <button
+                  onClick={handlePDFExportAll}
+                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                  All workspaces
+                </button>
+              </div>
+              <span className="text-gray-500 text-[10px]">Save notes to PDF</span>
             </div>
           </div>
+
 
           {statusMessage && (
             <div className={`p-2.5 rounded-xl text-xs mb-3 ${statusMessage.isError ? 'bg-red-600 text-white font-bold text-[14px]'
@@ -352,8 +385,9 @@ export default function App() {
             </div>
           )}
         </div>
-      )}
+      )
+      }
 
-    </div>
+    </div >
   );
 }

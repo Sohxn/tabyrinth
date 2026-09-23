@@ -4,21 +4,62 @@ import { StorageService } from '@/src/services/storage';
 import { createPortal } from 'react-dom';
 import { sanitizeHTML } from '@/src/utils/sanitizeHTML';
 import { type TabNode } from '@/src/types';
-import { PencilSimpleIcon, CaretCircleDownIcon, CaretCircleRightIcon } from '@phosphor-icons/react';
+import { PencilSimpleIcon, CaretCircleRightIcon } from '@phosphor-icons/react';
 
 interface TreeNodeProps {
   nodeID: string | number;
   depth: number;
   isResettingGhosts?: boolean;
+  isChainContinuation?: boolean;
 }
 
-export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeProps) {
+const CHAIN_THRESHOLD = 4;
+
+//**todo: split if needed
+function getChainLength(startID: string | number, nodes: Record<string | number, TabNode>): number {
+  let len = 0;
+  let currID: string | number | undefined = startID;
+
+  while (currID !== undefined) {
+    const currNode: TabNode | undefined = nodes[currID];
+    if (!currNode) break;
+    len++;
+    currID = currNode.childrenIDs.length === 1 ? currNode.childrenIDs[0] : undefined;
+  }
+
+  return len;
+}
+
+function getChainDisplayNode(
+  startID: string | number,
+  nodes: Record<string | number, TabNode>,
+  lastActiveTabID: number | null
+): TabNode | undefined {
+  let current: TabNode | undefined = nodes[startID];
+  let leafNode = current;
+
+  while (current) {
+    if (current.id == lastActiveTabID) return current;
+    leafNode = current;
+
+    const onlyChildID = current.childrenIDs.length === 1 ? current.childrenIDs[0] : undefined;
+    current = onlyChildID !== undefined ? nodes[onlyChildID] : undefined;
+  }
+
+  return leafNode;
+}
+
+export function TreeNode({ nodeID, depth, isResettingGhosts = false, isChainContinuation = false }: TreeNodeProps) {
   const node = useTreeStore((state) => state.nodes[nodeID]);
   const expandedNodes = useTreeStore((state) => state.expandedNodeIDs);
   const toggleExpand = useTreeStore((state) => state.toggleExpand);
   const focusTab = useTreeStore((state) => state.focusTab);
   const closeTab = useTreeStore((state) => state.closeTab);
   const lastActiveTabID = useTreeStore((state) => state.lastActiveTabID);
+
+  const chainLen = useTreeStore((state) =>
+    isChainContinuation ? 1 : getChainLength(nodeID, state.nodes)
+  );
 
   const [showNotes, setShowNotes] = useState(false);
   const [newNoteInput, setNewNoteInput] = useState('');
@@ -28,15 +69,23 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
   if (!node) return null;
 
   // status flags
-  const isExpanded = expandedNodes[nodeID] ?? true;
   const hasChildren = node.childrenIDs && node.childrenIDs.length > 0;
-  const isActive = lastActiveTabID == node.id;
+  const isChainFoldCandidate = !isChainContinuation && chainLen > CHAIN_THRESHOLD;
+  const isExpanded = expandedNodes[nodeID] ?? !isChainFoldCandidate;
+  const isFoldedChain = isChainFoldCandidate && !isExpanded;
+
+  const displayNode = isFoldedChain ? getChainDisplayNode(nodeID, useTreeStore.getState().nodes, lastActiveTabID) ?? node : node;
+  const isActive = isFoldedChain ? displayNode.id == lastActiveTabID : lastActiveTabID == node.id;
+
 
   // notes related
   const notesCount = node.notes?.length ?? 0;
 
   // animation related
   const isSlidingOut = isClosing || (node.isClosed && isResettingGhosts)
+
+  // CHANGED: extracted so the deck-of-cards preview below can share it
+  const rowMarginLeft = (depth === 0 || isActive || !hasChildren) ? 0 : `${depth * 16 + 9}px`;
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     e.dataTransfer.setData('text/plain', String(nodeID));
@@ -53,15 +102,13 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
 
   const handleTabClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
+    const target = isFoldedChain ? displayNode : node;
 
-    if (node.isClosed) {
-      await chrome.runtime.sendMessage({
-        type: 'reopen-node',
-        nodeID: node.id
-      });
+    if (target.isClosed) {
+      await chrome.runtime.sendMessage({ type: 'reopen-node', nodeID: target.id });
     } else {
-      await chrome.tabs.update(Number(node.id), { active: true });
-      await chrome.windows.update(node.windowID, { focused: true });
+      await chrome.tabs.update(Number(target.id), { active: true });
+      await chrome.windows.update(target.windowID, { focused: true });
     }
   };
 
@@ -155,13 +202,21 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
         />
       )}
 
+      {/* CHANGED: deck-of-cards preview — 2 peeking layers + the row itself = 3 */}
+      {isFoldedChain && (
+        <div style={{ marginLeft: rowMarginLeft }} className="pointer-events-none">
+          <div className="h-2 mx-3 rounded-t-2xl border-2 border-b-0 border-[#333333] bg-[#141518] opacity-70" />
+          <div className="h-2 mx-1.5 rounded-t-2xl border-2 border-b-0 border-[#333333] bg-[#1c1d21] opacity-90 -mt-1" />
+        </div>
+      )}
+
       <div onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={handleTabClick}
-        style={{ marginLeft: (depth === 0 || isActive || !hasChildren) ? 0 : `${depth * 16 + 9}px` }}
+        style={{ marginLeft: rowMarginLeft }}
         className={`group relative flex items-center h-12 pr-1 my-[1px] rounded-2xl 
             text-xs cursor-pointer transition-colors border-2 border-[#333333] 
-            ${isActive ? 'bg-[#3c516f] text-bold font-medium' : node.isClosed
+            ${isActive ? 'bg-[#3c516f] text-bold font-medium' : displayNode.isClosed
             ? 'bg-black text-white opacity-40'
             : 'text-white bg-black bg-hover:bg-[#3b3b3b]'}`}>
 
@@ -177,67 +232,75 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
             <CaretCircleRightIcon size={24} />
           </span>
         </button>
-        {node.favIconURL ? (
-          <img src={node.favIconURL} alt="" className="w-4 h-4 rounded-sm mr-2 flex-shrink-0" />
+        {displayNode.favIconURL ? (
+          <img src={displayNode.favIconURL} alt="" className="w-4 h-4 rounded-sm mr-2 flex-shrink-0" />
         ) : (
           <div className="w-4 h-4 rounded-sm bg-gray-600 mr-2 flex-shrink-0" />
         )}
 
-        <span className={`truncate flex-1 ${node.isClosed ? 'text-gray-200' : 'text-white text-[14px]'}`}>
-          {node.title || 'New Tab'}
+        <span className={`truncate flex-1 ${displayNode.isClosed ? 'text-gray-200' : 'text-white text-[14px]'}`}>
+          {displayNode.title || 'New Tab'}
         </span>
 
         <div className='right-1 flex items-center gap-1'>
-          {notesCount > 0 ?
-            (
-              <>
-                {isHovered && (
-                  <button onClick={(e) => {
-                    e.stopPropagation();
-                    setShowNotes((prev) => (!prev));
-                  }}
-                    className='px-1.5
+          {isFoldedChain ? (
+            <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-gray-400 font-mono">
+              {chainLen}
+            </span>
+          ) : (
+            <>
+              {notesCount > 0 ?
+                (
+                  <>
+                    {isHovered && (
+                      <button onClick={(e) => {
+                        e.stopPropagation();
+                        setShowNotes((prev) => (!prev));
+                      }}
+                        className='px-1.5
                     py-0.5 rounded-full h-6 w-6 bg-white flex
                     text-center justify-center items-center '>
-                    <PencilSimpleIcon className='text-black' size={40} />
-                  </button>
-                )}
+                        <PencilSimpleIcon className='text-black' size={40} />
+                      </button>
+                    )}
 
-                <button onClick={(e) => {
-                  e.stopPropagation();
-                  setShowNotes((prev) => !prev);
-                }} className='px-1.5
+                    <button onClick={(e) => {
+                      e.stopPropagation();
+                      setShowNotes((prev) => !prev);
+                    }} className='px-1.5
                     py-0.5 rounded-full h-6 w-6 bg-white flex
                     text-center justify-center items-center'>
-                  <span className='text-black text-md font-bold'>{notesCount}</span>
-                </button>
-              </>
-            ) :
-            (isHovered &&
-              (
-                <button onClick={(e) => {
-                  e.stopPropagation();
-                  setShowNotes((prev) => !prev);
-                }} className='px-1.5
+                      <span className='text-black text-md font-bold'>{notesCount}</span>
+                    </button>
+                  </>
+                ) :
+                (isHovered &&
+                  (
+                    <button onClick={(e) => {
+                      e.stopPropagation();
+                      setShowNotes((prev) => !prev);
+                    }} className='px-1.5
                     py-0.5 rounded-full h-6 w-6 bg-white flex
                     text-center justify-center items-center '>
-                  <span className='text-black text-md font-bold'>
-                    <PencilSimpleIcon className='text-black' />
-                  </span>
-                </button>
-              )
-            )
-          }
+                      <span className='text-black text-md font-bold'>
+                        <PencilSimpleIcon className='text-black' />
+                      </span>
+                    </button>
+                  )
+                )
+              }
 
-          {!node.isClosed && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                closeTab(node.id);
-              }}
-              className="h-6 w-6 flex items-center justify-center rounded hover:bg-[#483a54] text-white font-bold hover:text-white">
-              ✕
-            </button>
+              {!node.isClosed && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeTab(node.id);
+                  }}
+                  className="h-6 w-6 flex items-center justify-center rounded hover:bg-[#483a54] text-white font-bold hover:text-white">
+                  ✕
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -247,7 +310,13 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false }: TreeNodeP
       {hasChildren && isExpanded && (
         <div className="flex flex-col transition-all duration-300 ease-in-out">
           {node.childrenIDs.map((childID) => (
-            <TreeNode key={childID} nodeID={childID} depth={depth + 1} isResettingGhosts={isResettingGhosts} />
+            <TreeNode
+              key={childID}
+              nodeID={childID}
+              depth={depth + 1}
+              isResettingGhosts={isResettingGhosts}
+              isChainContinuation={node.childrenIDs.length === 1}
+            />
           ))}
         </div>
       )}
