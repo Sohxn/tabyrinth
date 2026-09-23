@@ -2,6 +2,23 @@ import { create } from 'zustand';
 import { StorageService } from '../services/storage';
 import { type TabNode, type TreeStorageSchema, type Workspace, type TabGroup } from '../types';
 
+export const CHAIN_FOLD_THRESHOLD = 4;
+
+// mirror function
+function getChainLengthFrom(startID: string | number, nodes: Record<string | number, TabNode>): number {
+    let len = 0;
+    let currID: string | number | undefined = startID;
+
+    while (currID !== undefined) {
+        const currNode: TabNode | undefined = nodes[currID];
+        if (!currNode) break;
+        len++;
+        currID = currNode.childrenIDs.length === 1 ? currNode.childrenIDs[0] : undefined;
+    }
+
+    return len;
+}
+
 const DEFAULT_WORKSPACE: Workspace = {
     id: 'workspace-default',
     name: 'untitled',
@@ -70,11 +87,10 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
 
     syncFromStorage: (schema) => {
         set((state) => {
-            // auto expand newly discovered parent nodes
             const nextExpanded = { ...state.expandedNodeIDs };
-            // added a safe fallback with {}
             Object.values(schema.nodes || {}).forEach((node) => {
-                if (node.childrenIDs.length > 0 && nextExpanded[node.id] === undefined) {
+                const isChainFoldCandidate = getChainLengthFrom(node.id, schema.nodes) > CHAIN_FOLD_THRESHOLD;
+                if (node.childrenIDs.length > 0 && nextExpanded[node.id] === undefined && !isChainFoldCandidate) {
                     nextExpanded[node.id] = true;
                 }
             });

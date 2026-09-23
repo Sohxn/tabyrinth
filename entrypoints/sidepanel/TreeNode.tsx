@@ -202,11 +202,15 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false, isChainCont
         />
       )}
 
-      {/* CHANGED: deck-of-cards preview — 2 peeking layers + the row itself = 3 */}
-      {isFoldedChain && (
-        <div style={{ marginLeft: rowMarginLeft }} className="pointer-events-none">
-          <div className="h-2 mx-3 rounded-t-2xl border-2 border-b-0 border-[#333333] bg-[#141518] opacity-70" />
-          <div className="h-2 mx-1.5 rounded-t-2xl border-2 border-b-0 border-[#333333] bg-[#1c1d21] opacity-90 -mt-1" />
+      {/* deck of cards */}
+      {isChainFoldCandidate && (
+        <div
+          className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${isFoldedChain ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+            }`}>
+          <div style={{ marginLeft: rowMarginLeft }} className="overflow-hidden pointer-events-none">
+            <div className="h-2 mx-3 rounded-t-2xl border-2 border-b-0 border-[#333333] bg-[#141518] opacity-70" />
+            <div className="h-2 mx-1.5 rounded-t-2xl border-2 border-b-0 border-[#333333] bg-[#1c1d21] opacity-90 -mt-1" />
+          </div>
         </div>
       )}
 
@@ -269,7 +273,7 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false, isChainCont
                       setShowNotes((prev) => !prev);
                     }} className='px-1.5
                     py-0.5 rounded-full h-6 w-6 bg-white flex
-                    text-center justify-center items-center'>
+                  text-center justify-center items-center'>
                       <span className='text-black text-md font-bold'>{notesCount}</span>
                     </button>
                   </>
@@ -307,19 +311,22 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false, isChainCont
 
       {notesOverlay}
 
-      {hasChildren && isExpanded && (
-        <div className="flex flex-col transition-all duration-300 ease-in-out">
-          {node.childrenIDs.map((childID) => (
-            <TreeNode
-              key={childID}
-              nodeID={childID}
-              depth={depth + 1}
-              isResettingGhosts={isResettingGhosts}
-              isChainContinuation={node.childrenIDs.length === 1}
-            />
-          ))}
+      {hasChildren && (
+        <div
+          className={`grid transition-[grid-template-rows] duration-200 ease-in-out ${isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+          <div className="overflow-hidden flex flex-col">
+            {node.childrenIDs.map((childID) => (
+              <TreeNode
+                key={childID}
+                nodeID={childID}
+                depth={depth + 1}
+                isResettingGhosts={isResettingGhosts}
+                isChainContinuation={node.childrenIDs.length === 1} />
+            ))}
+          </div>
         </div>
       )}
+
     </div>
   );
 }
