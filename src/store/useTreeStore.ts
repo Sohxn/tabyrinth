@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { StorageService } from '../services/storage';
-import { type TabNode, type TreeStorageSchema, type Workspace, type TabGroup, type MoodboardItem } from '../types';
+import { type TabNode, type TreeStorageSchema, type Workspace, type TabGroup, type MoodboardItem, type MoodboardUnit } from '../types';
 
 export const CHAIN_FOLD_THRESHOLD = 4;
 
@@ -39,6 +39,8 @@ interface TreeStoreState {
 
     // moodboarding and ideation
     moodboardItems: Record<string, MoodboardItem>;
+    //board visibility
+    moodboardVisible: boolean
 
     // grouping
     groups: Record<string, TabGroup>;
@@ -72,6 +74,11 @@ interface TreeStoreState {
     //moodboarding and ideation
     getMoodboardItemsByWorkspace: (workspaceID: string) => MoodboardItem[];
     deleteMoodboardItem: (itemID: string) => void;
+    linkMoodboardItem: (childID: string, parentID: string, role: 'caption' | 'annotation') => void;
+    unlinkMoodboardItem: (itemID: string) => void;
+    getMoodboardUnits: (workspaceID: string) => MoodboardUnit[];
+    setItemAspectRatio: (itemID: string, ratio: number) => void;
+    toggleMoodboardVisibility: () => Promise<void>;
 }
 
 export const useTreeStore = create<TreeStoreState>()((set, get) => ({
@@ -88,6 +95,7 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
     searchQuery: '',
     activeMediaTabID: null,
     moodboardItems: {},
+    moodboardVisible: false,
 
     init: async () => {
         const data = await StorageService.get();
@@ -114,7 +122,8 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
                 workspaces: schema.workspaces && schema.workspaces.length > 0 ? schema.workspaces : state.workspaces,
                 activeWorkspaceID: schema.activeWorkspaceID || state.activeWorkspaceID,
                 groups: schema.groups || {},
-                moodboardItems: schema.moodboardItems || {}
+                moodboardItems: schema.moodboardItems || {},
+                moodboardVisible: schema.moodboardVisible || false
             }
         })
     },
@@ -294,12 +303,95 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
         return Object.values(moodboardItems).filter((i) => i.workspaceID === workspaceID);
     },
 
+    linkMoodboardItem: (childID: string, parentID: string, role: 'caption' | 'annotation' = 'caption') => {
+        set((state) => {
+            const child = state.moodboardItems[childID];
+            const parent = state.moodboardItems[parentID];
+            if (!child || !parent || childID === parentID) return state;
+            if (parent.linkedTo) return state;
+
+            const updated = {
+                ...state.moodboardItems,
+                [childID]: {
+                    ...child,
+                    linkedTo: parentID,
+                    linkRole: role
+                }
+            };
+            StorageService.set({
+                moodboardItems: updated
+            });
+            return {
+                moodboardItems: updated
+            }
+        });
+    },
+
+    unlinkMoodboardItem: (itemID: string) => {
+        set((state) => {
+            const item = state.moodboardItems[itemID];
+            if (!item?.linkedTo) return state;
+            const { linkedTo, linkRole, ...rest } = item;
+            const updated = { ...state.moodboardItems, [itemID]: rest };
+            StorageService.set({ moodboardItems: updated });
+            return { moodboardItems: updated };
+        });
+    },
+
     deleteMoodboardItem: (itemID: string) => {
         set((state) => {
             const updated = { ...state.moodboardItems };
             delete updated[itemID];
+            Object.values(updated).forEach((i) => {
+                if (i.linkedTo === itemID) delete updated[i.id];
+            });
+            StorageService.set({ moodboardItems: updated });
             return { moodboardItems: updated };
         });
         StorageService.deleteMoodboardItem(itemID);
     },
+
+    getMoodboardUnits: (workspaceID: string) => {
+        const items = get().getMoodboardItemsByWorkspace(workspaceID);
+        const linkedByParent: Record<string, MoodboardItem[]> = {};
+        items.forEach((i) => {
+            if (i.linkedTo) (linkedByParent[i.linkedTo] ??= []).push(i);
+        });
+        return items
+            .filter((i) => !i.linkedTo)
+            .map((primary) => ({ primary, linked: linkedByParent[primary.id] ?? [] }));
+    },
+
+    setItemAspectRatio: (itemID: string, ratio: number) => {
+        set((state) => {
+            const item = state.moodboardItems[itemID];
+            if (!item || item.aspectRatio) return state;
+            const updated = {
+                ...state.moodboardItems,
+                [itemID]: {
+                    ...item,
+                    aspectRatio: ratio
+                }
+            };
+            StorageService.set({
+                moodboardItems: updated
+            });
+            return {
+                moodboardItems: updated
+            };
+        });
+    },
+
+    toggleMoodboardVisibility: async () => {
+        const next = !get().moodboardVisible;
+        await chrome.runtime.sendMessage(
+            {
+                type: 'toggle-moodboard',
+                visible: next
+            }
+        );
+        set({
+            moodboardVisible: next
+        });
+    }
 }));

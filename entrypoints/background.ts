@@ -80,6 +80,20 @@ async function reconcileMediaState() {
   }
 }
 
+async function toggleBoardOverlay(visible: boolean) {
+  // We no longer manage a window here.
+  // We just notify the content scripts in the active tab(s).
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tab?.id) {
+    chrome.tabs.sendMessage(tab.id, {
+      type: 'toggle-moodboard',
+      visible
+    }).catch(() => {
+      // Fail silently if content script isn't loaded yet
+    });
+  }
+}
+
 
 export default defineBackground(() => {
 
@@ -145,11 +159,30 @@ export default defineBackground(() => {
     reconcileMediaState();
   });
 
-  // keybind opens sidebar
+  // KEYBINDS
   chrome.commands.onCommand.addListener((command, tab) => {
-    if (command !== "open-tabyrinth") return;
-    if (tab?.windowId === undefined) return;
-    chrome.sidePanel.open({ windowId: tab.windowId }).catch(console.error);
+    // if (command !== "open-tabyrinth") return;
+    // if (tab?.windowId === undefined) return;
+    // chrome.sidePanel.open({ windowId: tab.windowId }).catch(console.error);
+    if (command === "open-tabyrinth") {
+      if (tab?.windowId === undefined) return;
+      chrome.sidePanel.open({
+        windowId: tab.windowId
+      }).catch(console.error);
+      return;
+    }
+
+    if (command === "open-board") {
+      (async () => {
+        const state = await StorageService.get();
+        const nextVisible = !state.moodboardVisible;
+        await StorageService.set({
+          moodboardVisible: nextVisible
+        });
+        await toggleBoardOverlay(nextVisible);
+      })();
+    }
+
   });
 
   chrome.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -179,16 +212,29 @@ export default defineBackground(() => {
       }
     }
 
+    chrome.windows.onRemoved.addListener(async (windowID) => {
+      const stored = await chrome.storage.session.get('boardWindowID');
+      if (stored.boardWindowID === windowID) {
+        await chrome.storage.session.remove('boardWindowID');
+        await StorageService.set({ moodboardVisible: false });
+      }
+    });
+
     // moodboarding / ideation
     if (info.menuItemId === "pin-image-to-board" && info.srcUrl) {
-      const state = await StorageService.get();
-      await StorageService.addMoodboardItem({
-        type: 'image',
-        content: info.srcUrl,
-        sourceURL: info.pageUrl,
-        sourceTitle: tab?.title,
-        workspaceID: state.activeWorkspaceID
-      });
+      try {
+        const state = await StorageService.get();
+        const item = await StorageService.addMoodboardItem({
+          type: 'image',
+          content: info.srcUrl,
+          sourceURL: info.pageUrl,
+          sourceTitle: tab?.title,
+          workspaceID: state.activeWorkspaceID
+        });
+        console.log('[BOARD] Successfully pinned image:', item.id, 'to workspace:', state.activeWorkspaceID);
+      } catch (err) {
+        console.error('[ERROR] Failed to pin image to board:', err);
+      }
     }
 
     if (info.menuItemId === "pin-selection-to-board" && tab?.id) {
@@ -204,16 +250,18 @@ export default defineBackground(() => {
           }
         });
 
+        //*fixed: sanitization at render time
         const rawHTML = injectionRes[0]?.result || "";
         if (rawHTML.trim().length > 0) {
           const state = await StorageService.get();
-          await StorageService.addMoodboardItem({
+          const item = await StorageService.addMoodboardItem({
             type: 'note',
-            content: sanitizeHTML(rawHTML),
+            content: rawHTML,
             sourceURL: info.pageUrl,
             sourceTitle: tab?.title,
             workspaceID: state.activeWorkspaceID
           });
+          console.log('[BOARD] Successfully pinned selection:', item.id, 'to workspace:', state.activeWorkspaceID);
         }
       } catch (err) {
         console.error("[ERROR] Failed to add selection to board: ", err);
@@ -235,13 +283,25 @@ export default defineBackground(() => {
 
   //** fix for race condition: tab creation from ghost tab 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    if (message?.type == 'reopen-node') {
+    if (message?.type === 'reopen-node') {
       StorageService.reopenNode(message.nodeID).then(() => sendResponse({
         ok: true
       })).catch((err) => sendResponse({
         ok: false,
         error: String(err)
       }));
+      return true;
+    }
+
+    if (message?.type === 'toggle-moodboard') {
+      (async () => {
+        const nextVisible = Boolean(message.visible);
+        await StorageService.set({
+          moodboardVisible: nextVisible
+        });
+        await toggleBoardOverlay(nextVisible);
+        sendResponse({ ok: true });
+      })();
       return true;
     }
   });

@@ -10,6 +10,7 @@ const InitState: TreeStorageSchema = {
   isPro: false,
   activeWorkspaceID: 'workspace-default',
   moodboardItems: {},
+  moodboardVisible: false,
   workspaces: [{
     id: 'workspace-default',
     name: 'untitled',

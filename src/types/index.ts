@@ -44,6 +44,15 @@ export interface MoodboardItem {
     sourceTitle?: string,
     workspaceID: string,
     createdAt: number;
+    isEmbedded?: boolean;
+    aspectRatio?: number;
+    linkedTo?: string;
+    linkRole?: 'caption' | 'annotation';
+}
+
+export interface MoodboardUnit {
+    primary: MoodboardItem;
+    linked: MoodboardItem[];
 }
 
 
@@ -62,6 +71,8 @@ export interface TreeStorageSchema {
     activeWorkspaceID: string;
     workspaces?: Workspace[];
     moodboardItems?: Record<string, MoodboardItem>;
+    // board visibility
+    moodboardVisible?: boolean;
 }
 
 // grouping, exporting
