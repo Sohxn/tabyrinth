@@ -40,8 +40,8 @@ export function Board() {
     const unlinkMoodboardItem = useTreeStore((s) => s.unlinkMoodboardItem);
     const deleteMoodboardItem = useTreeStore((s) => s.deleteMoodboardItem);
     const setItemAspectRatio = useTreeStore((s) => s.setItemAspectRatio);
-    const moodboardVisible = useTreeStore((s) => s.moodboardVisible);
 
+    // packing 
     const units = getMoodboardUnits(activeWorkspaceID);
     const cols = packUnits(units);
 
@@ -89,10 +89,8 @@ export function Board() {
         return () => chrome.storage.onChanged.removeListener(listener);
     }, []);
 
-    if (!moodboardVisible) return null;
-
     return (
-        <div onDragOver={(e) => e.preventDefault()} onDrop={handleDropOnBoard} className="flex gap-3 p-3 min-h-screen bg-black/80 backdrop-blur-md fixed right-4 top-4 bottom-4 w-[720px] z-[2147483647] rounded-3xl border border-white/10 overflow-x-auto overflow-y-auto">
+        <div onDragOver={(e) => e.preventDefault()} onDrop={handleDropOnBoard} className="flex gap-3 p-3 min-h-screen bg-black/80 backdrop-blur-md w-full h-full z-[2147483647] rounded-3xl border border-white/10 overflow-x-auto overflow-y-auto">
             {cols.map((col, colIdx) => (
                 <div key={colIdx} className="flex-1 flex flex-col gap-3 min-w-[240px]">
                     {col.map((unit) => (

@@ -7,9 +7,10 @@ import { MediaCard } from './MediaCard';
 import { WorkspaceNotch } from './WorkspaceNotch';
 import { buildMarkdownExport, downloadMarkdown } from '@/src/utils/exportNotes';
 import { exportToPDF } from '@/src/utils/exportPDF';
+import { openMoodboardPiP } from '../board/openMoodboardPiP';
 
 // icons
-import { GearIcon, ArrowClockwiseIcon, MagnifyingGlassIcon, PlusIcon, Ghost, RowsPlusTopIcon, SlidersHorizontalIcon, CaretCircleDownIcon } from '@phosphor-icons/react';
+import { ArrowClockwiseIcon, MagnifyingGlassIcon, RowsPlusTopIcon, SlidersHorizontalIcon, BookIcon, Book } from '@phosphor-icons/react';
 
 // only for sync 
 import { createCheckoutSession, activateLicenseKey, getLicenseKey } from '@/src/services/sync';
@@ -178,23 +179,34 @@ export default function App() {
     <div className="flex flex-col h-screen w-full bg-[#21252b] text-[#e3e1e5] p-2 text-xs select-none overflow-hidden">
 
       {/* header */}
-      <div className="flex items-center justify-between px-2 h-16">
+      <div className="flex items-center justify-between gap-2 px-2 h-16 min-w-0">
         {isPro ?
-          <div className="font-logo text-sm text-gray-200"></div> :
-          <div className="font-logo text-lg text-gray-200">Tabyrinth</div>}
+          <div className="font-logo text-sm text-gray-200 shrink-0"></div> :
+          <div className="font-logo text-lg text-gray-200 shrink-0">Tabyrinth</div>}
         {isPro && (
-          <span className="text-2xl text-[#FF6314] ml-4 mb-1 font-bold tracking-wider">
+          <span className="text-2xl text-[#FF6314] ml-4 mb-1 font-bold tracking-wider shrink-0">
             plus
           </span>
         )}
 
-        {/* <div className='flex items-center justify-center rounded-3xl h-10 w-full max-w-xs bg-black mx-4'>...</div> */}
-        <WorkspaceNotch />
+        <div className="flex-1 min-w-0">
+          <WorkspaceNotch />
+        </div>
 
-        <div className="inline-flex items-center justify-center whitespace-nowrap 
-        text-[15px] leading-none font-bold text-white bg-[#FF6314] 
-        px-4 h-8 rounded-full shadow-sm shadow-black/30">
-          {`${activeCount} ${activeCount === 1 ? 'tab' : 'tabs'}`}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <div className="inline-flex items-center justify-center whitespace-nowrap 
+            text-[15px] leading-none font-bold text-white bg-[#FF6314] 
+            px-4 h-8 rounded-2xl shadow-sm shadow-black/30">
+            {activeCount}
+          </div>
+
+          <button
+            onClick={() => openMoodboardPiP()}
+            title="Open moodboard"
+            className="flex items-center justify-center h-8 w-8 rounded-xl bg-white/10 
+            hover:bg-white/20 text-gray-300 hover:text-white transition-colors shrink-0">
+            <BookIcon size={18} weight="bold" />
+          </button>
         </div>
       </div>
 

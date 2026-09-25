@@ -96,7 +96,7 @@ export function WorkspaceNotch() {
                 onClick={() => setIsExpanded(true)}
                 onDragOver={handleNotchDragOver}
                 className="flex items-center justify-between rounded-3xl h-10 w-full 
-                    max-w-xs bg-black/80 border border-white/10 px-3 mx-4 
+                    max-w-xs bg-black/80 border border-white/10 px-3 
                     cursor-pointer hover:border-orange-500/50 transition-all duration-200 group relative z-20">
                 <div className="flex items-center gap-2 overflow-hidden">
                     <svg className="w-3.5 h-3.5 shrink-0 transition-transform group-hover:scale-110"
@@ -114,7 +114,7 @@ export function WorkspaceNotch() {
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
-                    <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-gray-400 font-mono">
+                    <span className="text-[10px] bg-white/10 px-2.5 py-1 rounded-xl text-gray-400 font-mono">
                         {getTabsByWorkspace(activeWorkspace?.id ?? '').length}
                     </span>
                     <span className="text-[10px] text-gray-500 group-hover:text-orange-400 transition-colors">

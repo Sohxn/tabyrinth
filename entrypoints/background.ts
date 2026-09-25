@@ -80,20 +80,6 @@ async function reconcileMediaState() {
   }
 }
 
-async function toggleBoardOverlay(visible: boolean) {
-  // We no longer manage a window here.
-  // We just notify the content scripts in the active tab(s).
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (tab?.id) {
-    chrome.tabs.sendMessage(tab.id, {
-      type: 'toggle-moodboard',
-      visible
-    }).catch(() => {
-      // Fail silently if content script isn't loaded yet
-    });
-  }
-}
-
 
 export default defineBackground(() => {
 
@@ -172,17 +158,6 @@ export default defineBackground(() => {
       return;
     }
 
-    if (command === "open-board") {
-      (async () => {
-        const state = await StorageService.get();
-        const nextVisible = !state.moodboardVisible;
-        await StorageService.set({
-          moodboardVisible: nextVisible
-        });
-        await toggleBoardOverlay(nextVisible);
-      })();
-    }
-
   });
 
   chrome.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -211,14 +186,6 @@ export default defineBackground(() => {
         console.error('[ERROR] Failed to capture selection: ', err);
       }
     }
-
-    chrome.windows.onRemoved.addListener(async (windowID) => {
-      const stored = await chrome.storage.session.get('boardWindowID');
-      if (stored.boardWindowID === windowID) {
-        await chrome.storage.session.remove('boardWindowID');
-        await StorageService.set({ moodboardVisible: false });
-      }
-    });
 
     // moodboarding / ideation
     if (info.menuItemId === "pin-image-to-board" && info.srcUrl) {
@@ -293,17 +260,6 @@ export default defineBackground(() => {
       return true;
     }
 
-    if (message?.type === 'toggle-moodboard') {
-      (async () => {
-        const nextVisible = Boolean(message.visible);
-        await StorageService.set({
-          moodboardVisible: nextVisible
-        });
-        await toggleBoardOverlay(nextVisible);
-        sendResponse({ ok: true });
-      })();
-      return true;
-    }
   });
 
   chrome.alarms.create('media-reconcile', { periodInMinutes: 1 });

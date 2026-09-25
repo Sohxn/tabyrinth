@@ -348,7 +348,6 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
             StorageService.set({ moodboardItems: updated });
             return { moodboardItems: updated };
         });
-        StorageService.deleteMoodboardItem(itemID);
     },
 
     getMoodboardUnits: (workspaceID: string) => {
@@ -384,14 +383,7 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
 
     toggleMoodboardVisibility: async () => {
         const next = !get().moodboardVisible;
-        await chrome.runtime.sendMessage(
-            {
-                type: 'toggle-moodboard',
-                visible: next
-            }
-        );
-        set({
-            moodboardVisible: next
-        });
+        set({ moodboardVisible: next });
+        await StorageService.set({ moodboardVisible: next });
     }
 }));

@@ -26,13 +26,6 @@ export default defineConfig({
         },
         "description": "Open Tabyrinth Sidebar"
       },
-
-      "open-board": {
-        "suggested_key": {
-          "default": "Ctrl+Shift+U"
-        },
-        "description": "Open Tabyrinth Board"
-      },
     },
     side_panel: {
       default_path: 'sidepanel.html'
