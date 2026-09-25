@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, act } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTreeStore } from '../../src/store/useTreeStore';
 import { TreeNode } from './TreeNode';
 import { type TreeStorageSchema } from '@/src/types';
@@ -7,10 +7,10 @@ import { MediaCard } from './MediaCard';
 import { WorkspaceNotch } from './WorkspaceNotch';
 import { buildMarkdownExport, downloadMarkdown } from '@/src/utils/exportNotes';
 import { exportToPDF } from '@/src/utils/exportPDF';
-import { openMoodboardPiP } from '../board/openMoodboardPiP';
+import { Board } from '../board/Board';
 
 // icons
-import { ArrowClockwiseIcon, MagnifyingGlassIcon, RowsPlusTopIcon, SlidersHorizontalIcon, BookIcon, Book } from '@phosphor-icons/react';
+import { ArrowClockwiseIcon, MagnifyingGlassIcon, RowsPlusTopIcon, SlidersHorizontalIcon, BookIcon } from '@phosphor-icons/react';
 
 // only for sync 
 import { createCheckoutSession, activateLicenseKey, getLicenseKey } from '@/src/services/sync';
@@ -18,8 +18,8 @@ import { GhostGroup } from './GhostGroup';
 
 
 export default function App() {
-  const { rootIDs, init, syncFromStorage, nodes,
-    activeWorkspaceID, getRegularRootIDs, getGhostGroup, assignTabToWorkspace } = useTreeStore(); const treeContainerRef = useRef<HTMLDivElement>(null);
+  const { init, syncFromStorage, nodes,
+    activeWorkspaceID, getRegularRootIDs, getGhostGroup, assignTabToWorkspace, getMoodboardUnits } = useTreeStore(); const treeContainerRef = useRef<HTMLDivElement>(null);
   const [isResettingGhosts, SetIsResettingGhosts] = useState(false);
 
   // settings related
@@ -34,6 +34,10 @@ export default function App() {
   // workspace related 
   const regularRootIDs = getRegularRootIDs(activeWorkspaceID);
   const ghostGroup = getGhostGroup(activeWorkspaceID);
+
+  // manual and automatic moodboard toggle
+  const [isMoodboardToggled, setIsMoodboardToggled] = useState(false);
+  const isMoodboardActive = isMoodboardToggled === true;
 
   // settings button function
   const handleOpenSettings = () => {
@@ -118,6 +122,15 @@ export default function App() {
     return () => chrome.storage.onChanged.removeListener(handleStorageChange);
   }, []);
 
+  // adding items to moodboard
+  useEffect(() => {
+    const moodboardItems = getMoodboardUnits(activeWorkspaceID);
+
+    if (moodboardItems.length > 0 && !isMoodboardToggled) {
+      setIsMoodboardToggled(true);
+    }
+  }, [getMoodboardUnits, activeWorkspaceID, isMoodboardToggled]);
+
   const activeCount = Object.values(nodes).filter((n) => !n.isClosed).length;
 
   // create new tab
@@ -201,7 +214,7 @@ export default function App() {
           </div>
 
           <button
-            onClick={() => openMoodboardPiP()}
+            onClick={() => { setIsMoodboardToggled(!isMoodboardToggled) }}
             title="Open moodboard"
             className="flex items-center justify-center h-8 w-8 rounded-xl bg-white/10 
             hover:bg-white/20 text-gray-300 hover:text-white transition-colors shrink-0">
@@ -216,8 +229,17 @@ export default function App() {
       {/* tree */}
       {/* add padding after fixing alignment here */}
       <div className="flex-1 min-h-0 flex flex-col">
+
+        {/* rendering the board */}
+        <div
+          className={`overflow-hidden transition-all duration-300 ease-in-out 
+            ${isMoodboardActive ? "h-1/2 opacity-100" : "h-0 opacity-0"}`}>
+          <Board />
+        </div>
+
+
         {/* Scrollable list area */}
-        <div ref={treeContainerRef} className="flex-1 overflow-y-auto no-scrollbar">
+        <div ref={treeContainerRef} className={`flex-1 mt-3 overflow-y-auto no-scrollbar ${isMoodboardActive ? 'h-1/2' : ''}`}>
           {!regularRootIDs || regularRootIDs.length === 0 ? (
             <div className="flex flex-col items-center justify-center m-2">
               <p className="text-gray-400 font-bold text-lg text-center">No active tabs in this workspace</p>
