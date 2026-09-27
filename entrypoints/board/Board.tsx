@@ -21,7 +21,7 @@ function packUnits(units: MoodboardUnit[], colWidth: number, colCount: number) {
     units.forEach((unit) => {
         const shortestColIdx = colHeights.indexOf(Math.min(...colHeights));
         const targetCol = columns[shortestColIdx];
-        if (!targetCol) return; // unreachable given colCount > 0, but satisfies TS and fails safe
+        if (!targetCol) return;
 
         const ratio = unit.primary.aspectRatio ?? 1;
         const primaryHeight = unit.primary.type === "image" ? colWidth / ratio : 80;

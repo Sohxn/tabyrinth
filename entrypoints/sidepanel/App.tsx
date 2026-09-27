@@ -6,7 +6,8 @@ import { StorageService } from '@/src/services/storage';
 import { MediaCard } from './MediaCard';
 import { WorkspaceNotch } from './WorkspaceNotch';
 import { buildMarkdownExport, downloadMarkdown } from '@/src/utils/exportNotes';
-import { exportToPDF } from '@/src/utils/exportPDF';
+import { buildMoodboardExport, downloadMoodboard } from '@/src/utils/exportMoodboard';
+import { exportToPDF, exportMoodboardToPDF } from '@/src/utils/exportPDF';
 import { Board } from '../board/Board';
 
 // icons
@@ -77,6 +78,30 @@ export default function App() {
   const handlePDFExportAll = async () => {
     const schema = await StorageService.get();
     await exportToPDF(schema);
+  }
+
+  // Moodboard export handlers
+  const handleMoodboardExportWorkspace = async () => {
+    const schema = await StorageService.get();
+    const wsName = (schema.workspaces || []).find(w => w.id === activeWorkspaceID)?.name || 'workspace';
+    const markdown = buildMoodboardExport(schema, { workspaceID: activeWorkspaceID });
+    downloadMoodboard(markdown, `tabyrinth-moodboard-${wsName.replace(/\s+/g, '-')}-${Date.now()}.md`);
+  }
+
+  const handleMoodboardExportAll = async () => {
+    const schema = await StorageService.get();
+    const markdown = buildMoodboardExport(schema);
+    downloadMoodboard(markdown, `tabyrinth-moodboard-all-${Date.now()}.md`);
+  }
+
+  const handleMoodboardPDFWorkspace = async () => {
+    const schema = await StorageService.get();
+    await exportMoodboardToPDF(schema, { workspaceID: activeWorkspaceID });
+  }
+
+  const handleMoodboardPDFAll = async () => {
+    const schema = await StorageService.get();
+    await exportMoodboardToPDF(schema);
   }
 
   useEffect(() => {
@@ -365,6 +390,44 @@ export default function App() {
                 </button>
               </div>
               <span className="text-gray-500 text-[10px]">Save notes to PDF</span>
+            </div>
+          </div>
+
+          {/* export moodboard -> MD and PDF */}
+          <div className="bg-white/10 rounded-2xl p-4 flex flex-col gap-3 mb-2">
+            <span className="font-bold text-sm text-white">Export Moodboard</span>
+
+            <div className='flex flex-col gap-1.5'>
+              <span className="text-gray-300 text-[13px]">Save moodboard items to Markdown</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleMoodboardExportWorkspace}
+                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                  This workspace
+                </button>
+                <button
+                  onClick={handleMoodboardExportAll}
+                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                  All workspaces
+                </button>
+              </div>
+            </div>
+
+            <div className='flex flex-col gap-1.6'>
+              <span className="text-gray-400 text-[11px] uppercase tracking-wide">PDF</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleMoodboardPDFWorkspace}
+                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                  This workspace
+                </button>
+                <button
+                  onClick={handleMoodboardPDFAll}
+                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                  All workspaces
+                </button>
+              </div>
+              <span className="text-gray-500 text-[10px]">Save moodboard to PDF</span>
             </div>
           </div>
 
