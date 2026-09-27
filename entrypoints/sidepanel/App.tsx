@@ -39,6 +39,12 @@ export default function App() {
   const [isMoodboardToggled, setIsMoodboardToggled] = useState(false);
   const isMoodboardActive = isMoodboardToggled === true;
 
+  // zustand moodboard data
+  const moodboardItemCount = useTreeStore((s) =>
+    Object.values(s.moodboardItems).filter(
+      (i) => i.workspaceID === activeWorkspaceID
+    ).length
+  );
   // settings button function
   const handleOpenSettings = () => {
     setIsSettingsOpen(!isSettingsOpen);
@@ -122,14 +128,21 @@ export default function App() {
     return () => chrome.storage.onChanged.removeListener(handleStorageChange);
   }, []);
 
-  // adding items to moodboard
-  useEffect(() => {
-    const moodboardItems = getMoodboardUnits(activeWorkspaceID);
 
-    if (moodboardItems.length > 0 && !isMoodboardToggled) {
+  // adding items to moodboard
+  const prevCountRef = useRef(0);
+
+  useEffect(() => {
+    const wasEmpty = prevCountRef.current === 0;
+    const isEmpty = moodboardItemCount === 0;
+
+    if (wasEmpty && !isEmpty) {
       setIsMoodboardToggled(true);
+    } else if (!wasEmpty && isEmpty) {
+      setIsMoodboardToggled(false);
     }
-  }, [getMoodboardUnits, activeWorkspaceID, isMoodboardToggled]);
+    prevCountRef.current = moodboardItemCount;
+  }, [moodboardItemCount]);
 
   const activeCount = Object.values(nodes).filter((n) => !n.isClosed).length;
 

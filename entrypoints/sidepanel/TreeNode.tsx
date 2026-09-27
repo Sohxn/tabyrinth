@@ -121,69 +121,70 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false, isChainCont
 
 
   // overlay: notes in focus 
-  const notesOverlay = showNotes ? createPortal(
-    <div
-      onClick={() => setShowNotes(false)}
-      className="fixed inset-0 top-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+  const notesOverlay = showNotes ?
+    createPortal(
       <div
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md bg-[#181a1f] border border-white/15 
-        rounded-t-3xl p-3 shadow-2xl flex flex-col gap-3 max-h-[80vh] animate-in slide-in-from-bottom duration-200">
-        {/* CHANGED: header now shows "Notes for" + tab title instead of the
-            old generic "Tab Notepad" label, per the reference-name request */}
-        <div className="flex items-center justify-between px-1 pb-2 border-b border-white/10">
-          <div className="flex flex-col overflow-hidden">
-            <span className="text-[10px] text-gray-500 uppercase tracking-wide">Notes for</span>
-            <span className="text-xs font-semibold text-gray-200 truncate max-w-[260px]">
-              {node.title || 'New Tab'}
-            </span>
-          </div>
-          <button
-            onClick={() => setShowNotes(false)}
-            className="text-gray-400 hover:text-white text-sm font-bold px-2 shrink-0">
-            ✕
-          </button>
-        </div>
+        onClick={() => setShowNotes(false)}
+        className="fixed inset-0 top-0 z-[100] p-4 flex items-start justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="w-full max-w-md flex flex-col gap-2 max-h-[80vh] animate-in slide-in-from-bottom duration-200">
 
-        {notesCount > 0 ? (
-          <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
-            {node.notes?.map((note) => (
-              <div key={note.id} className="group/note relative bg-black p-4 mb-4 border-2 border-white/30 rounded-xl text-[16px] text-gray-200">
-                {/* unchanged: still using your existing sanitizeHTML + dangerouslySetInnerHTML pattern */}
-                <div
-                  className="whitespace-pre-wrap break-words pr-4"
-                  dangerouslySetInnerHTML={{ __html: sanitizeHTML(note.content) }} />
-                <button
-                  onClick={() => StorageService.deleteNoteFromTab(node.id, note.id)}
-                  className="absolute top-1 right-1 opacity-0 group-hover/note:opacity-100 text-gray-400 hover:text-red-400 p-0.5 text-[9px]"
-                  title="Delete note">
-                  ✕
-                </button>
+          {/* tab name — now its own detached rounded patch, not part of the card below */}
+          <div className="flex items-center justify-between bg-[#181a1f] border border-white/15 rounded-2xl px-4 py-3 shadow-lg shrink-0">
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-[10px] text-gray-500 uppercase tracking-wide">Notes for</span>
+              <span className="text-xs font-semibold text-gray-200 truncate max-w-[260px]">
+                {node.title || 'New Tab'}
+              </span>
+            </div>
+            <button
+              onClick={() => setShowNotes(false)}
+              className="text-gray-400 hover:text-white text-sm font-bold px-2 shrink-0">
+              ✕
+            </button>
+          </div>
+
+          {/* notes list + input — separate card, own shadow/border, no longer sharing a box with the header */}
+          <div className="bg-[#181a1f] border border-white/15 rounded-3xl p-3 shadow-2xl flex flex-col gap-3 flex-1 min-h-0">
+            {notesCount > 0 ? (
+              <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
+                {node.notes?.map((note) => (
+                  <div key={note.id} className="group/note relative bg-black p-4 mb-4 border-2 border-white/30 rounded-xl text-[16px] text-gray-200">
+                    <div
+                      className="whitespace-pre-wrap break-words pr-4"
+                      dangerouslySetInnerHTML={{ __html: sanitizeHTML(note.content) }} />
+                    <button
+                      onClick={() => StorageService.deleteNoteFromTab(node.id, note.id)}
+                      className="absolute top-1 right-1 opacity-0 group-hover/note:opacity-100 text-gray-400 hover:text-red-400 p-0.5 text-[9px]"
+                      title="Delete note">
+                      ✕
+                    </button>
+                  </div>
+                ))}
               </div>
-            ))}
+            ) : (
+              <p className="text-[13px] font-bold text-gray-400 p-2">No notes yet. Highlight text & right-click to add.</p>
+            )}
+
+            <form onSubmit={handleManualNoteToTab} className="flex gap-1 pt-1 shrink-0">
+              <input
+                type="text"
+                value={newNoteInput}
+                onChange={(e) => setNewNoteInput(e.target.value)}
+                placeholder="Type a quick note..."
+                className="flex-1 mr-2 bg-black rounded-xl px-2 py-1 h-10 text-[14px] text-white" />
+
+              <button
+                type="submit"
+                className="px-2 py-1 bg-orange-500 hover:bg-orange-700 h-9 text-white rounded-lg text-[14px] font-bold transition-colors">
+                Add
+              </button>
+            </form>
           </div>
-        ) : (
-          <p className="text-[13px] font-bold text-gray-400 p-2">No notes yet. Highlight text & right-click to add.</p>
-        )}
-
-        <form onSubmit={handleManualNoteToTab} className="flex gap-1 pt-1 shrink-0">
-          <input
-            type="text"
-            value={newNoteInput}
-            onChange={(e) => setNewNoteInput(e.target.value)}
-            placeholder="Type a quick note..."
-            className="flex-1 mr-2 bg-black rounded-xl px-2 py-1 h-10 text-[14px] text-white" />
-
-          <button
-            type="submit"
-            className="px-2 py-1 bg-orange-500 hover:bg-orange-700 h-9 text-white rounded-lg text-[14px] font-bold transition-colors">
-            Add
-          </button>
-
-        </form>
-      </div>
-    </div>,
-    document.body) : null;
+        </div>
+      </div>,
+      document.body) : null;
 
 
   // main render
