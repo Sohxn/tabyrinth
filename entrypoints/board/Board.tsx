@@ -3,15 +3,15 @@ import { useTreeStore } from "@/src/store/useTreeStore";
 import { sanitizeHTML } from "@/src/utils/sanitizeHTML";
 import { type MoodboardItem, type MoodboardUnit } from "@/src/types";
 import { StorageService } from "@/src/services/storage";
-import { MinusIcon, PlusIcon } from "@phosphor-icons/react";
+import { MinusIcon, PlusIcon, DownloadSimpleIcon } from "@phosphor-icons/react";
 
 // Layout constants
 const MIN_COLS = 2;
 const MAX_COLS = 4;
 const DEFAULT_COLS = 2;
-const GAP = 12;               // matches gap-3 (12px)
-const PADDING = 12;           // matches p-3 (12px left + 12px right)
-const MAX_COL_WIDTH = 160;    // cap so cards stay compact even on wide panels
+const GAP = 12;
+const PADDING = 12;
+const MAX_COL_WIDTH = 160;
 const CAPTION_LINE_HEIGHT = 24;
 
 function packUnits(units: MoodboardUnit[], colWidth: number, colCount: number) {
@@ -65,7 +65,9 @@ export function Board() {
             ? Math.min(availableWidth / colCount, MAX_COL_WIDTH)
             : 0;
 
-    const units = getMoodboardUnits(activeWorkspaceID);
+    const units = getMoodboardUnits(activeWorkspaceID)
+    const itemCount = units.length;
+
     const cols = colWidth > 0
         ? packUnits(units, colWidth, colCount)
         : Array.from({ length: colCount }, () => []);
@@ -116,33 +118,36 @@ export function Board() {
     }, []);
 
     return (
-        <div className="relative flex flex-col h-full min-h-0 w-full bg-gray-800 rounded-3xl border-2 border-white/20 overflow-hidden">
+        <div className="relative flex flex-col h-full min-h-0 w-full bg-gray-800 dotted-back rounded-3xl border-2 border-white/20 overflow-hidden">
             {/* board controls */}
             <div className="absolute flex items-center bottom-2 right-2 gap-2 px-3 py-2 shrink-0">
                 {/* liquid glass toolbar */}
-                <div className="flex rounded-3xl bg-white/10 backdrop-blur-xl border-2 border-white/30 
-                h-12 z-12 p-2 justify-center items-center text-white">
-                    <span className="text-[10px] uppercase tracking-wide mr-1">Columns</span>
-                    <button
-                        onClick={() => setColCount((c) => Math.max(MIN_COLS, c - 1))}
-                        disabled={colCount <= MIN_COLS}
-                        className="h-6 w-6 flex items-center justify-center rounded-full 
+
+                {itemCount > 1 &&
+                    <div className="flex rounded-3xl bg-white/10 backdrop-blur-xl border-2 border-white/30 
+                    h-12 z-12 p-2 justify-center items-center text-white">
+                        <span className="text-[10px] uppercase font-bold tracking-wide mr-1">Columns</span>
+                        <button
+                            onClick={() => setColCount((c) => Math.max(MIN_COLS, c - 1))}
+                            disabled={colCount <= MIN_COLS}
+                            className="h-6 w-6 flex items-center justify-center rounded-full 
                         bg-white/10 border-1 border-white/40 hover:bg-white/20 disabled:opacity-30 
                         disabled:cursor-not-allowed 
                         transition-colors"
-                        title="Fewer columns">
-                        <MinusIcon size={12} weight="bold" />
-                    </button>
-                    <span className="text-xs font-mono w-4 text-center">{colCount}</span>
-                    <button
-                        onClick={() => setColCount((c) => Math.min(MAX_COLS, c + 1))}
-                        disabled={colCount >= MAX_COLS}
-                        className="h-6 w-6 flex items-center justify-center rounded-full 
+                            title="Fewer columns">
+                            <MinusIcon size={12} weight="bold" />
+                        </button>
+                        <span className="text-xs font-mono w-4 text-center">{colCount}</span>
+                        <button
+                            onClick={() => setColCount((c) => Math.min(MAX_COLS, c + 1))}
+                            disabled={colCount >= MAX_COLS}
+                            className="h-6 w-6 flex items-center justify-center rounded-full 
                         bg-white/10 border-1 border-white/40 hover:bg-white/20 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                        title="More columns">
-                        <PlusIcon size={12} weight="bold" />
-                    </button>
-                </div>
+                            title="More columns">
+                            <PlusIcon size={12} weight="bold" />
+                        </button>
+                    </div>
+                }
             </div>
 
             {/* masonry canvas */}

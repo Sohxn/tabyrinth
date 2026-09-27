@@ -1,10 +1,11 @@
-import React, { useState, type SyntheticEvent } from 'react';
+import React, { useState, type SyntheticEvent, useRef, useEffect } from 'react';
 import { useTreeStore } from '../../src/store/useTreeStore';
 import { StorageService } from '@/src/services/storage';
 import { createPortal } from 'react-dom';
 import { sanitizeHTML } from '@/src/utils/sanitizeHTML';
 import { type TabNode } from '@/src/types';
-import { PencilSimpleIcon, CaretCircleRightIcon } from '@phosphor-icons/react';
+import { PencilSimpleIcon, CaretCircleRightIcon, CodeBlockIcon } from '@phosphor-icons/react'; // Assuming CodeBlockIcon exists or can be replaced
+import { smartTextToHTML, escapeHTML } from '@/src/utils/noteText';
 
 interface TreeNodeProps {
   nodeID: string | number;
@@ -15,7 +16,6 @@ interface TreeNodeProps {
 
 const CHAIN_THRESHOLD = 4;
 
-//**todo: split if needed
 function getChainLength(startID: string | number, nodes: Record<string | number, TabNode>): number {
   let len = 0;
   let currID: string | number | undefined = startID;
@@ -66,9 +66,10 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false, isChainCont
   const [isHovered, setIsHovered] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
 
+  const inputRef = useRef<HTMLDivElement>(null);
+
   if (!node) return null;
 
-  // status flags
   const hasChildren = node.childrenIDs && node.childrenIDs.length > 0;
   const isChainFoldCandidate = !isChainContinuation && chainLen > CHAIN_THRESHOLD;
   const isExpanded = expandedNodes[nodeID] ?? !isChainFoldCandidate;
@@ -77,14 +78,8 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false, isChainCont
   const displayNode = isFoldedChain ? getChainDisplayNode(nodeID, useTreeStore.getState().nodes, lastActiveTabID) ?? node : node;
   const isActive = isFoldedChain ? displayNode.id == lastActiveTabID : lastActiveTabID == node.id;
 
-
-  // notes related
   const notesCount = node.notes?.length ?? 0;
-
-  // animation related
   const isSlidingOut = isClosing || (node.isClosed && isResettingGhosts)
-
-  // CHANGED: extracted so the deck-of-cards preview below can share it
   const rowMarginLeft = (depth === 0 || isActive || !hasChildren) ? 0 : `${depth * 16 + 9}px`;
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
@@ -112,15 +107,49 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false, isChainCont
     }
   };
 
-  const handleManualNoteToTab = async (e: SyntheticEvent<HTMLFormElement>) => {
+  const handleManualNoteToTab = async (e: SyntheticEvent) => {
     e.preventDefault();
-    if (!newNoteInput.trim()) return;
-    await StorageService.addNoteToTab(node.id, newNoteInput);
-    setNewNoteInput('');
+    const content = inputRef.current?.innerText || '';
+    if (!content.trim()) return;
+
+    // Manual input is treated as plain text and passed to the smart builder
+    const htmlToSave = smartTextToHTML(content);
+    await StorageService.addNoteToTab(node.id, htmlToSave);
+
+    if (inputRef.current) inputRef.current.innerText = '';
   };
 
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const html = e.clipboardData.getData('text/html');
+    const text = e.clipboardData.getData('text/plain');
 
-  // overlay: notes in focus 
+    if (html && (html.includes('<pre') || html.includes('<code'))) {
+      // Preserve structured code from clipboard, but sanitize it
+      const sanitized = sanitizeHTML(html);
+      document.execCommand('insertHTML', false, sanitized);
+      e.preventDefault();
+    }
+    // Otherwise, let the browser handle the plain text paste
+  };
+
+  const toggleCodeBlock = () => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    const selectedText = range.toString();
+
+    if (selectedText) {
+      const codeElement = document.createElement('pre');
+      const codeInner = document.createElement('code');
+      codeInner.innerText = selectedText;
+      codeElement.appendChild(codeInner);
+
+      range.deleteContents();
+      range.insertNode(codeElement);
+    }
+  };
+
   const notesOverlay = showNotes ?
     createPortal(
       <div
@@ -130,7 +159,6 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false, isChainCont
           onClick={(e) => e.stopPropagation()}
           className="w-full max-w-md flex flex-col gap-2 max-h-[80vh] animate-in slide-in-from-bottom duration-200">
 
-          {/* tab name — now its own detached rounded patch, not part of the card below */}
           <div className="flex items-center justify-between bg-[#181a1f] border border-white/15 rounded-2xl px-4 py-3 shadow-lg shrink-0">
             <div className="flex flex-col overflow-hidden">
               <span className="text-[10px] text-gray-500 uppercase tracking-wide">Notes for</span>
@@ -145,14 +173,13 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false, isChainCont
             </button>
           </div>
 
-          {/* notes list + input — separate card, own shadow/border, no longer sharing a box with the header */}
           <div className="bg-[#181a1f] border border-white/15 rounded-3xl p-3 shadow-2xl flex flex-col gap-3 flex-1 min-h-0">
             {notesCount > 0 ? (
               <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 no-scrollbar">
                 {node.notes?.map((note) => (
                   <div key={note.id} className="group/note relative bg-black p-4 mb-4 border-2 border-white/30 rounded-xl text-[16px] text-gray-200">
                     <div
-                      className="whitespace-pre-wrap break-words pr-4"
+                      className="whitespace-pre-wrap break-words pr-4 overflow-x-auto no-scrollbar"
                       dangerouslySetInnerHTML={{ __html: sanitizeHTML(note.content) }} />
                     <button
                       onClick={() => StorageService.deleteNoteFromTab(node.id, note.id)}
@@ -167,32 +194,39 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false, isChainCont
               <p className="text-[13px] font-bold text-gray-400 p-2">No notes yet. Highlight text & right-click to add.</p>
             )}
 
-            <form onSubmit={handleManualNoteToTab} className="flex gap-1 pt-1 shrink-0">
-              <input
-                type="text"
-                value={newNoteInput}
-                onChange={(e) => setNewNoteInput(e.target.value)}
-                placeholder="Type a quick note..."
-                className="flex-1 mr-2 bg-black rounded-xl px-2 py-1 h-10 text-[14px] text-white" />
-
-              <button
-                type="submit"
-                className="px-2 py-1 bg-orange-500 hover:bg-orange-700 h-9 text-white rounded-lg text-[14px] font-bold transition-colors">
-                Add
-              </button>
-            </form>
+            <div className="flex flex-col gap-2 pt-1 shrink-0">
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={toggleCodeBlock}
+                  className="px-2 py-1 bg-gray-700 hover:bg-gray-600 h-8 text-white rounded-lg text-[12px] font-bold transition-colors flex items-center gap-1">
+                  <CodeBlockIcon size={14} /> Code
+                </button>
+              </div>
+              <div className="flex gap-1">
+                <div
+                  ref={inputRef}
+                  contentEditable
+                  onPaste={handlePaste}
+                  className="flex-1 bg-black rounded-xl px-2 py-1 min-h-[40px] max-h-[150px] overflow-y-auto text-[14px] text-white outline-none border border-transparent focus:border-orange-500/50"
+                  data-placeholder="Type a quick note..." />
+                <button
+                  onClick={handleManualNoteToTab}
+                  className="px-2 py-1 bg-orange-500 hover:bg-orange-700 h-9 text-white rounded-lg text-[14px] font-bold transition-colors">
+                  Add
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>,
       document.body) : null;
 
-
-  // main render
   return (
     <div draggable={depth === 0}
       onDragStart={handleDragStart}
       className={`relative flex-col
-    transition-all duration-300 ease-in-out transform 
+    transition-all duration-300 ease-in-out transform
     ${isSlidingOut ? 'translate-x-full opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}`}>
       {depth > 0 && (
         <div
@@ -203,7 +237,6 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false, isChainCont
         />
       )}
 
-      {/* deck of cards */}
       {isChainFoldCandidate && (
         <div
           className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${isFoldedChain ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
@@ -219,8 +252,8 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false, isChainCont
         onMouseLeave={() => setIsHovered(false)}
         onClick={handleTabClick}
         style={{ marginLeft: rowMarginLeft }}
-        className={`group relative flex items-center h-12 pr-1 my-[1px] rounded-2xl 
-            text-xs cursor-pointer transition-colors border-2 border-[#333333] 
+        className={`group relative flex items-center h-12 pr-1 my-[1px] rounded-2xl
+            text-xs cursor-pointer transition-colors border-2 border-[#333333]
             ${isActive ? 'bg-[#3c516f] text-bold font-medium' : displayNode.isClosed
             ? 'bg-black text-white opacity-40'
             : 'text-white bg-black bg-hover:bg-[#3b3b3b]'}`}>
@@ -327,7 +360,6 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false, isChainCont
           </div>
         </div>
       )}
-
     </div>
   );
 }

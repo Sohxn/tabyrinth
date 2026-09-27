@@ -77,3 +77,10 @@ body {
   content: attr(data-placeholder);
   color: #6b7280;
 }
+
+.dotted-back {
+  background: radial-gradient(circle, #696969 5%, transparent 10%);
+  background-size: 2em 2em;
+  background-color: #222b38;
+  opacity: 1;
+}

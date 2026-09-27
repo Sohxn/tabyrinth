@@ -3,7 +3,7 @@ import { StorageService } from "@/src/services/storage";
 import { type TabNode } from "@/src/types";
 import { getAccentColorFromURL } from "@/src/utils/mediaColors";
 import { initializeSync, setupSyncListeners } from "@/src/services/sync";
-import { plainTextToParagraph } from '@/src/utils/noteText'
+import { smartTextToHTML } from '@/src/utils/noteText'
 import { sanitizeHTML } from "@/src/utils/sanitizeHTML";
 
 
@@ -178,7 +178,7 @@ export default defineBackground(() => {
         const rawHTML = injectionResults[0]?.result || info.pageUrl || "";
 
         if (rawHTML.trim().length > 0) {
-          const htmlToSave = rawHTML.includes('<') ? rawHTML : plainTextToParagraph(rawHTML);
+          const htmlToSave = rawHTML.includes('<') ? rawHTML : smartTextToHTML(rawHTML);
           await StorageService.addNoteToTab(tab.id, htmlToSave, info.pageUrl);
         }
       } catch (err) {

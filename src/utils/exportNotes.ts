@@ -13,12 +13,19 @@ turndownservice.addRule('sup', {
 });
 
 //**helpers */
-function noteHTML2Markdown(html: string): string {
+export function noteHTML2Markdown(html: string): string {
     if (!html) return '';
     try {
         return turndownservice.turndown(html)
             .replace(/\\\[/g, '[')
             .replace(/\\\]/g, ']')
+            .replace(/[^\x00-\x7F]+/g, (match) => {
+                // If it's a common non-ASCII character (like emoji), keep it.
+                // Otherwise, remove potential ghost control characters or malformed symbols.
+                return /[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/u.test(match)
+                    ? match
+                    : '';
+            })
             .trim();
     } catch {
         return html;
