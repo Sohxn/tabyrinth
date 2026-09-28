@@ -8,7 +8,7 @@ import { WorkspaceNotch } from './WorkspaceNotch';
 import { buildMarkdownExport, downloadMarkdown } from '@/src/utils/exportNotes';
 import { buildMoodboardExport, downloadMoodboard } from '@/src/utils/exportMoodboard';
 import { exportToPDF, exportMoodboardToPDF, exportVisualMoodboardToPDF } from '@/src/utils/exportPDF';
-import { downloadVisualMoodboardAsHtml, downloadVisualMoodboardAsImage } from '@/src/utils/exportVisualMoodboard';
+import { downloadVisualMoodboardAsHtml } from '@/src/utils/exportVisualMoodboard';
 import { Board } from '../board/Board';
 
 // icons
@@ -113,9 +113,7 @@ export default function App() {
     const filename = `tabyrinth-visual-moodboard-${wsName.replace(/\s+/g, '-')}-${Date.now()}`;
 
     if (format === 'pdf') {
-      await exportVisualMoodboardToPDF(units, `${wsName} — Visual Moodboard`);
-    } else if (format === 'image') {
-      await downloadVisualMoodboardAsImage(units, `${filename}.png`);
+      await exportVisualMoodboardToPDF(units, `${wsName} — Visual Moodboard`)
     } else {
       await downloadVisualMoodboardAsHtml(units, `${filename}.html`);
     }
