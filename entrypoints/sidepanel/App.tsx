@@ -7,7 +7,8 @@ import { MediaCard } from './MediaCard';
 import { WorkspaceNotch } from './WorkspaceNotch';
 import { buildMarkdownExport, downloadMarkdown } from '@/src/utils/exportNotes';
 import { buildMoodboardExport, downloadMoodboard } from '@/src/utils/exportMoodboard';
-import { exportToPDF, exportMoodboardToPDF } from '@/src/utils/exportPDF';
+import { exportToPDF, exportMoodboardToPDF, exportVisualMoodboardToPDF } from '@/src/utils/exportPDF';
+import { downloadVisualMoodboardAsHtml, downloadVisualMoodboardAsImage } from '@/src/utils/exportVisualMoodboard';
 import { Board } from '../board/Board';
 
 // icons
@@ -102,6 +103,22 @@ export default function App() {
   const handleMoodboardPDFAll = async () => {
     const schema = await StorageService.get();
     await exportMoodboardToPDF(schema);
+  }
+
+  // Visual Moodboard export handlers
+  const handleVisualExportWorkspace = async (format: 'pdf' | 'image' | 'html') => {
+    const schema = await StorageService.get();
+    const wsName = (schema.workspaces || []).find(w => w.id === activeWorkspaceID)?.name || 'workspace';
+    const units = getMoodboardUnits(activeWorkspaceID);
+    const filename = `tabyrinth-visual-moodboard-${wsName.replace(/\s+/g, '-')}-${Date.now()}`;
+
+    if (format === 'pdf') {
+      await exportVisualMoodboardToPDF(units, `${wsName} — Visual Moodboard`);
+    } else if (format === 'image') {
+      await downloadVisualMoodboardAsImage(units, `${filename}.png`);
+    } else {
+      await downloadVisualMoodboardAsHtml(units, `${filename}.html`);
+    }
   }
 
   useEffect(() => {
@@ -428,6 +445,28 @@ export default function App() {
                 </button>
               </div>
               <span className="text-gray-500 text-[10px]">Save moodboard to PDF</span>
+            </div>
+
+            <div className='flex flex-col gap-1.6 mt-2 pt-2 border-t border-white/10'>
+              <span className="text-gray-400 text-[11px] uppercase tracking-wide">Visual Export (As Is)</span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleVisualExportWorkspace('pdf')}
+                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                  PDF
+                </button>
+                <button
+                  onClick={() => handleVisualExportWorkspace('image')}
+                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                  Image
+                </button>
+                <button
+                  onClick={() => handleVisualExportWorkspace('html')}
+                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                  HTML
+                </button>
+              </div>
+              <span className="text-gray-500 text-[10px]">Export masonry layout</span>
             </div>
           </div>
 

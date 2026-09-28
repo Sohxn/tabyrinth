@@ -1,0 +1,43 @@
+# Future Features Roadmap
+
+## LOW PRIORITY LATER
+- **Comparison Engine**: A system to orchestrate side-by-side analysis of multiple tabs from a workspace. Should allow tiling of browser windows/tabs and anchoring of specific content sections across different pages for direct comparison.
+
+## HIGH PRIORITY TO DESIGN NOW
+- **Hot tabs**: A system which solves the issue of people opening the same set of tabs in the same sequence everyday.
+* what we would have is: a section that has a set of "starters": folders with a set of tabs that open on clicking the starter launcher: for example
+* jira tickets: certain page + github.com/soxhn/ + microsoft teams meeting opens together on three tabs instantly on clicking the starter
+* saving time and effort
+
+### 🛠 Implementation Plan: Hot Tabs (Starters)
+
+#### 1. Data Model & Persistence
+- **`src/types/index.ts`**:
+  - Define `Starter` interface: `{ id: string, name: string, urls: string[] }`.
+  - Add `starters: Record<string, Starter>` to `TreeStorageSchema`.
+- **`src/services/storage.ts`**:
+  - Update `InitState` to include `starters: {}`.
+  - Implement `upsertStarter(starter: Starter)` and `deleteStarter(starterId: string)` using `StorageService.transaction`.
+
+#### 2. State Management
+- **`src/store/useTreeStore.ts`**:
+  - Add `starters` to state and update `syncFromStorage`.
+  - Add actions: `upsertStarter`, `deleteStarter`.
+  - Implement `launchStarter(starterId: string)`: Iterate through URLs and call `chrome.tabs.create({ url, active: false })`.
+
+#### 3. UI Integration
+- **`entrypoints/sidepanel/App.tsx`**:
+  - **Trigger**: Add a button in the footer grid (beside reset/settings) using `SquaresFourIcon` from `@phosphor-icons/react`.
+  - **Pane**: Implement `StarterPane` overlay using `absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col p-4 overflow-y-auto`.
+  - **Features**:
+    - List of starters with "Launch" (Play icon), "Edit", and "Delete" (Trash icon).
+    - "Add New Starter" button.
+    - Inline editing for names and a management view for URLs.
+
+---
+so lets start now.
+All i need from you are the code changes and ill type them out in my editor
+
+Make no mistakes.
+Make sure the code is error and bug free and follows good clean software design principles and follows the overall design and coding pattern
+that I have followed in my project. The code should also look human.

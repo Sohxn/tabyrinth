@@ -1,6 +1,7 @@
-import { type TreeStorageSchema } from "../types";
+import { type TreeStorageSchema, type MoodboardUnit } from "../types";
 import { buildMarkdownExport } from "./exportNotes";
 import { buildMoodboardExport } from "./exportMoodboard";
+import { buildVisualMoodboardHtml, VISUAL_EXPORT_STYLES } from "./exportVisualMoodboard";
 import { marked } from "marked";
 import PRINT_STYLES from "./pdfExport.css?raw";
 
@@ -8,14 +9,13 @@ function escapeHtml(s: string): string {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// **todo: put this in a template file
-function wrapHtmlDocument(title: string, bodyContent: string): string {
+function wrapHtmlDocument(title: string, bodyContent: string, styles: string = PRINT_STYLES): string {
     return `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <title>${escapeHtml(title)}</title>
-<style>${PRINT_STYLES}</style>
+<style>${styles}</style>
 </head>
 <body>
 <article class="markdown-body">
@@ -69,3 +69,14 @@ export async function exportMoodboardToPDF(
     const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
     await chrome.tabs.create({ url: dataUrl });
 }
+
+export async function exportVisualMoodboardToPDF(
+    units: MoodboardUnit[],
+    title: string = 'Moodboard Visual Export'
+): Promise<void> {
+    const bodyHtml = buildVisualMoodboardHtml(units);
+    const html = wrapHtmlDocument(title, bodyHtml, VISUAL_EXPORT_STYLES);
+    const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+    await chrome.tabs.create({ url: dataUrl });
+}
+
