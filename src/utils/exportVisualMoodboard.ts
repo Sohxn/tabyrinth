@@ -125,31 +125,3 @@ export async function downloadVisualMoodboardAsHtml(units: MoodboardUnit[], file
     a.click();
     URL.revokeObjectURL(url);
 }
-
-export async function downloadVisualMoodboardAsImage(units: MoodboardUnit[], filename: string) {
-    const body = buildVisualMoodboardHtml(units);
-
-    // Create a hidden container to render the DOM for the snapshot
-    const container = document.createElement('div');
-    container.style.position = 'absolute';
-    container.style.left = '-9999px';
-    container.style.top = '0';
-    container.innerHTML = `
-        <style>${VISUAL_EXPORT_STYLES}</style>
-        ${body}
-    `;
-    document.body.appendChild(container);
-
-    try {
-        const dataUrl = await toPng(container, {
-            backgroundColor: '#111827',
-            quality: 0.95
-        });
-        const link = document.createElement('a');
-        link.download = filename;
-        link.href = dataUrl;
-        link.click();
-    } finally {
-        document.body.removeChild(container);
-    }
-}

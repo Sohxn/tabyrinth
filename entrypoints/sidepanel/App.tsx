@@ -456,11 +456,6 @@ export default function App() {
                   PDF
                 </button>
                 <button
-                  onClick={() => handleVisualExportWorkspace('image')}
-                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                  Image
-                </button>
-                <button
                   onClick={() => handleVisualExportWorkspace('html')}
                   className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
                   HTML
