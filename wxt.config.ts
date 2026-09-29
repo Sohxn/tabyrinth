@@ -16,7 +16,8 @@ export default defineConfig({
       'idle',
       'downloads',
       'scripting',
-      'activeTab'
+      'activeTab',
+      'favicon'
     ],
     action: {},
     commands: {

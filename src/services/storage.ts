@@ -1,4 +1,4 @@
-import { type TreeStorageSchema, type TabNode, type TabNote, type TabGroup, type MoodboardItem } from "../types";
+import { type TreeStorageSchema, type TabNode, type TabNote, type TabGroup, type MoodboardItem, type HotTabSet } from "../types";
 
 const InitState: TreeStorageSchema = {
   nodes: {},
@@ -11,6 +11,7 @@ const InitState: TreeStorageSchema = {
   activeWorkspaceID: 'workspace-default',
   moodboardItems: {},
   moodboardVisible: false,
+  hotTabs: {},
   workspaces: [{
     id: 'workspace-default',
     name: 'untitled',
@@ -554,6 +555,28 @@ export const StorageService = {
         tabTreeData: { ...state, moodboardItems: updatedMoodboardItems },
       });
     });
+  },
+
+  async saveHotTabSet(set: HotTabSet): Promise<void> {
+    await this.transaction((state) => ({
+      hotTabs: {
+        ...(state.hotTabs || {}),
+        [set.id]: set,
+      },
+    }));
+  },
+
+  async deleteHotTabSet(setId: string): Promise<void> {
+    await this.transaction((state) => {
+      const hotTabs = { ...(state.hotTabs || {}) };
+      delete hotTabs[setId];
+      return { hotTabs };
+    });
+  },
+
+  async getHotTabSets(): Promise<HotTabSet[]> {
+    const state = await this.get();
+    return Object.values(state.hotTabs || {});
   },
 
   // clear tab tree

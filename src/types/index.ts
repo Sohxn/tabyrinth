@@ -73,6 +73,7 @@ export interface TreeStorageSchema {
     moodboardItems?: Record<string, MoodboardItem>;
     // board visibility
     moodboardVisible?: boolean;
+    hotTabs?: Record<string, HotTabSet>;
 }
 
 // grouping, exporting
@@ -81,6 +82,18 @@ export interface Workspace {
     name: string;
     color?: string;
     isDefault?: boolean;
+}
+
+export interface HotTabItem {
+    url: string;
+    title: string;
+}
+
+export interface HotTabSet {
+    id: string;
+    name: string;
+    items: HotTabItem[];
+    createdAt: number;
 }
 
 // sync
@@ -92,4 +105,3 @@ export interface SyncPayload {
     rootIDs: (string | number)[];
     groups: Record<string, TabGroup>;
 }
-

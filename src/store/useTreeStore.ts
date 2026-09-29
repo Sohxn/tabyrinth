@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { StorageService } from '../services/storage';
-import { type TabNode, type TreeStorageSchema, type Workspace, type TabGroup, type MoodboardItem, type MoodboardUnit } from '../types';
+import { type TabNode, type TreeStorageSchema, type Workspace, type TabGroup, type MoodboardItem, type MoodboardUnit, type HotTabSet } from '../types';
 
 export const CHAIN_FOLD_THRESHOLD = 4;
 
@@ -41,6 +41,7 @@ interface TreeStoreState {
     moodboardItems: Record<string, MoodboardItem>;
     //board visibility
     moodboardVisible: boolean
+    hotTabs: Record<string, HotTabSet>;
 
     // grouping
     groups: Record<string, TabGroup>;
@@ -49,6 +50,8 @@ interface TreeStoreState {
     activeMediaTabID: string | number | null;
 
     init: () => Promise<void>;
+    initHotTabs: () => Promise<void>;
+    launchHotTabSet: (setId: string) => Promise<void>;
 
     //testing the editor
     syncFromStorage: (schema: TreeStorageSchema) => void;
@@ -96,10 +99,41 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
     activeMediaTabID: null,
     moodboardItems: {},
     moodboardVisible: false,
+    hotTabs: {},
 
     init: async () => {
         const data = await StorageService.get();
         get().syncFromStorage(data);
+    },
+
+    initHotTabs: async () => {
+        const hotTabSets = await StorageService.getHotTabSets();
+        set({
+            hotTabs: Object.fromEntries(hotTabSets.map((hotTabSet) => [hotTabSet.id, hotTabSet]))
+        });
+    },
+
+    launchHotTabSet: async (setId) => {
+        const hotTabSet = get().hotTabs[setId];
+        if (!hotTabSet || hotTabSet.items.length === 0) return;
+
+        try {
+            const [firstItem, ...remainingItems] = hotTabSet.items;
+            if (!firstItem) return;
+            const firstTab = await chrome.tabs.create({ url: firstItem.url });
+            if (firstTab.windowId === undefined) {
+                throw new Error('The browser did not return a window for the new tab.');
+            }
+
+            for (const item of remainingItems) {
+                await chrome.tabs.create({
+                    url: item.url,
+                    windowId: firstTab.windowId,
+                });
+            }
+        } catch (error) {
+            console.error('[LOG] Failed to launch hot tab set:', error);
+        }
     },
 
     syncFromStorage: (schema) => {
@@ -123,7 +157,8 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
                 activeWorkspaceID: schema.activeWorkspaceID || state.activeWorkspaceID,
                 groups: schema.groups || {},
                 moodboardItems: schema.moodboardItems || {},
-                moodboardVisible: schema.moodboardVisible || false
+                moodboardVisible: schema.moodboardVisible || false,
+                hotTabs: schema.hotTabs || {}
             }
         })
     },

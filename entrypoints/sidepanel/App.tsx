@@ -12,7 +12,7 @@ import { downloadVisualMoodboardAsHtml } from '@/src/utils/exportVisualMoodboard
 import { Board } from '../board/Board';
 
 // icons
-import { ArrowClockwiseIcon, MagnifyingGlassIcon, RowsPlusTopIcon, SlidersHorizontalIcon, BookIcon } from '@phosphor-icons/react';
+import { ArrowClockwiseIcon, MagnifyingGlassIcon, SlidersHorizontalIcon, BookIcon, LightningIcon, PlusIcon } from '@phosphor-icons/react';
 
 // only for sync 
 import { createCheckoutSession, activateLicenseKey, getLicenseKey } from '@/src/services/sync';
@@ -21,11 +21,13 @@ import { GhostGroup } from './GhostGroup';
 
 export default function App() {
   const { init, syncFromStorage, nodes,
-    activeWorkspaceID, getRegularRootIDs, getGhostGroup, assignTabToWorkspace, getMoodboardUnits } = useTreeStore(); const treeContainerRef = useRef<HTMLDivElement>(null);
+    activeWorkspaceID, getRegularRootIDs, getGhostGroup, assignTabToWorkspace, getMoodboardUnits,
+    hotTabs, initHotTabs, launchHotTabSet } = useTreeStore(); const treeContainerRef = useRef<HTMLDivElement>(null);
   const [isResettingGhosts, SetIsResettingGhosts] = useState(false);
 
   // settings related
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isStarterPaneOpen, setIsStarterPaneOpen] = useState(false);
   const [isPro, setIsPro] = useState(false);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [activationMail, setActivationMail] = useState('');
@@ -51,6 +53,48 @@ export default function App() {
   const handleOpenSettings = () => {
     setIsSettingsOpen(!isSettingsOpen);
   }
+
+  const handleCreateHotTabSet = async () => {
+    const name = window.prompt('Name this Hot Tab starter');
+    if (!name?.trim()) return;
+
+    try {
+      const currentTabs = await chrome.tabs.query({ currentWindow: true });
+      const items = currentTabs
+        .filter((tab): tab is chrome.tabs.Tab & { url: string } =>
+          typeof tab.url === 'string' &&
+          !/^(chrome|edge|about|chrome-extension|moz-extension):/i.test(tab.url)
+        )
+        .map((tab) => ({ url: tab.url, title: tab.title || tab.url }));
+
+      if (items.length === 0) {
+        throw new Error('No browser tabs with valid URLs were found.');
+      }
+
+      const schema = await StorageService.get();
+      const hotTabSet = {
+        id: `hot-tabs-${Date.now()}`,
+        name: name.trim(),
+        items,
+        createdAt: Date.now(),
+      };
+      await StorageService.saveHotTabSet(hotTabSet);
+      await initHotTabs();
+      setIsStarterPaneOpen(true);
+    } catch (error) {
+      console.error('[LOG] Failed to create hot tab set:', error);
+    }
+  };
+
+  const handleDeleteHotTabSet = async (setId: string) => {
+    try {
+      const schema = await StorageService.get();
+      await StorageService.deleteHotTabSet(setId);
+      await initHotTabs();
+    } catch (error) {
+      console.error('[LOG] Failed to delete hot tab set:', error);
+    }
+  };
 
   // markdown export handlers 
   const handleMarkdownExportWorkspace = async () => {
@@ -326,7 +370,7 @@ export default function App() {
           group justify-center items-center bg-black/20 border-2 border-white/20 shrink-0 mt-4">
             <div className="w-5 h-5 flex items-center justify-center text-white group-hover:text-gray-300 transition-colors">
               <div className="text-lg font-bold leading-none">
-                <RowsPlusTopIcon size={24} weight='fill' />
+                <PlusIcon size={20} weight='bold' />
               </div>
             </div>
             <span className="text-sm text-white font-medium">New tab</span>
@@ -337,24 +381,93 @@ export default function App() {
       </div>
 
       {/* footer */}
-      <div className='shrink-0 bottom-3 left-3 right-3 grid grid-cols-6 gap-4 items-center justify-center bg-transparent'>
+      <div className='shrink-0 bottom-3 left-3 right-3 grid grid-cols-7 gap-4 items-center justify-center bg-transparent'>
         {/* search bar */}
-        <div className='rounded-full h-12 my-2 py-2 justify-center items-center grid grid-cols-4 col-span-4
+        <div className='rounded-full h-10 my-2 py-2 justify-center items-center grid grid-cols-4 col-span-4
         bg-[#21252b] shadow-[inset_9px_9px_18px_#121418,inset_-9px_-9px_18px_#30363e]'>
           <div className='col-span-1 ml-4'><MagnifyingGlassIcon size={24} /></div>
           <div className='flex col-span-3 justify-center'></div>
         </div>
 
         {/* clear tree button */}
-        <button onClick={resetTree} className='flex h-12 justify-center items-center'>
-          <ArrowClockwiseIcon size={32} />
+        <button onClick={resetTree} className='flex h-10 rounded-2xl bg-black border-2 border-gray-700 hover:bg-gray-200 hover:text-black 
+        transition-all ease-in-out duration-300 justify-center items-center'>
+          <ArrowClockwiseIcon size={20} />
+        </button>
+
+        <button onClick={() => setIsStarterPaneOpen(true)} className='flex h-10 rounded-2xl bg-black border-2 border-gray-700 hover:bg-gray-200 hover:text-black 
+        transition-all ease-in-out duration-300 justify-center items-center' title="Hot Tabs">
+          <LightningIcon size={20} weight="fill" />
         </button>
 
         {/* settings button */}
-        <button onClick={handleOpenSettings} className='flex h-12 justify-center items-center'>
-          <SlidersHorizontalIcon size={32} weight="fill" />
+        <button onClick={handleOpenSettings} className='flex h-10 rounded-2xl bg-black border-2 border-gray-700 hover:bg-gray-200 hover:text-black 
+        transition-all ease-in-out duration-300 justify-center items-center'>
+          <SlidersHorizontalIcon size={20} weight="fill" />
         </button>
       </div>
+
+
+      {/* HOT TABS STARTER VIEW */}
+      {isStarterPaneOpen && (
+        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col p-4 overflow-y-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-bold text-white">Hot Tabs</h2>
+            <button
+              onClick={() => setIsStarterPaneOpen(false)}
+              className="text-gray-400 hover:text-white text-base font-bold px-2"
+              aria-label="Close Hot Tabs">
+              ✕
+            </button>
+          </div>
+
+          <button
+            onClick={handleCreateHotTabSet}
+            className="border-2 border-dashed border-white/25 hover:border-[#FF6314] text-gray-300 hover:text-white rounded-2xl p-4 mb-3 text-sm font-bold transition-colors">
+            + Create from Current Workspace
+          </button>
+
+          <div className="flex flex-col gap-2">
+            {Object.values(hotTabs).length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-6">No Hot Tab starters yet.</p>
+            ) : (
+              Object.values(hotTabs).map((hotTabSet) => (
+
+                <div key={hotTabSet.id} className="bg-white/10 border-2 border-gray-700 rounded-2xl p-4">
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div className="min-w-0">
+                      <h3 className="font-bold text-white truncate">{hotTabSet.name}</h3>
+                      <p className="text-xs text-gray-400">{hotTabSet.items.length} tabs</p>
+                    </div>
+                    <button
+                      onClick={() => void launchHotTabSet(hotTabSet.id)}
+                      className="bg-[#FF6314] hover:bg-[#ff742d] text-white font-bold py-2 px-3 rounded-xl text-xs transition-colors">
+                      Launch
+                    </button>
+                  </div>
+
+                  <div className='flex items-center justify-center mb-2'>
+                    {hotTabSet.items.map((item, idx) => (
+                      <img
+                        key={idx}
+                        src={`chrome://favicon2/?pageUrl=${encodeURIComponent(item.url)}&size=32`}
+                        alt=""
+                        className='w-5 h-5 rounded-sm object-contain'
+                      />
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => void handleDeleteHotTabSet(hotTabSet.id)}
+                    className="w-full bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                    Delete
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* settings element */}
       {isSettingsOpen && (
