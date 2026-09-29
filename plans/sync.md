@@ -20,9 +20,7 @@ export interface SyncPayload {
     // ------------------
 }
 ```
-
 ---
-
 ## 2. Cloudflare Worker Changes (`schemas/sync.ts`)
 
 The Worker must be updated to recognize these new fields in the `SyncPayloadSchema`.

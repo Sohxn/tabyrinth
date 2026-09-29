@@ -87,6 +87,7 @@ export interface Workspace {
 export interface HotTabItem {
     url: string;
     title: string;
+    favIconUrl?: string;
 }
 
 export interface HotTabSet {

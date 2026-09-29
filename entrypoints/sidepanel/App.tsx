@@ -65,7 +65,11 @@ export default function App() {
           typeof tab.url === 'string' &&
           !/^(chrome|edge|about|chrome-extension|moz-extension):/i.test(tab.url)
         )
-        .map((tab) => ({ url: tab.url, title: tab.title || tab.url }));
+        .map((tab) => ({
+          url: tab.url,
+          title: tab.title || tab.url,
+          favIconUrl: tab.favIconUrl || undefined,
+        }));
 
       if (items.length === 0) {
         throw new Error('No browser tabs with valid URLs were found.');
@@ -376,8 +380,6 @@ export default function App() {
             <span className="text-sm text-white font-medium">New tab</span>
           </button>
         </div>
-
-
       </div>
 
       {/* footer */}
@@ -423,7 +425,8 @@ export default function App() {
 
           <button
             onClick={handleCreateHotTabSet}
-            className="border-2 border-dashed border-white/25 hover:border-[#FF6314] text-gray-300 hover:text-white rounded-2xl p-4 mb-3 text-sm font-bold transition-colors">
+            className="border-2 border-dashed border-white/25 hover:border-[#FF6314] text-gray-300 
+            hover:text-white rounded-2xl p-4 mb-3 text-sm font-bold transition-colors">
             + Create from Current Workspace
           </button>
 
@@ -434,10 +437,10 @@ export default function App() {
               Object.values(hotTabs).map((hotTabSet) => (
 
                 <div key={hotTabSet.id} className="bg-white/10 border-2 border-gray-700 rounded-2xl p-4">
-                  <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="flex items-center justify-between gap-3 mb-2">
                     <div className="min-w-0">
-                      <h3 className="font-bold text-white truncate">{hotTabSet.name}</h3>
-                      <p className="text-xs text-gray-400">{hotTabSet.items.length} tabs</p>
+                      <h3 className="text-lg font-bold text-white truncate">{hotTabSet.name}</h3>
+                      <p className="text-sm font-bold text-gray-400">{hotTabSet.items.length} tabs</p>
                     </div>
                     <button
                       onClick={() => void launchHotTabSet(hotTabSet.id)}
@@ -446,15 +449,25 @@ export default function App() {
                     </button>
                   </div>
 
-                  <div className='flex items-center justify-center mb-2'>
-                    {hotTabSet.items.map((item, idx) => (
-                      <img
-                        key={idx}
-                        src={`chrome://favicon2/?pageUrl=${encodeURIComponent(item.url)}&size=32`}
-                        alt=""
-                        className='w-5 h-5 rounded-sm object-contain'
-                      />
-                    ))}
+                  <div className='flex items-center mb-2 gap-1 overflow-hidden'>
+                    {hotTabSet.items.slice(0, 8).map((item, idx) => {
+                      const iconSrc = item.favIconUrl || `chrome://favicon2/favicons/pageUrl=${encodeURIComponent(item.url)}&size=32`;
+
+                      return (
+                        <img
+                          key={idx}
+                          src={iconSrc}
+                          alt=""
+                          className='w-5 h-5 rounded-sm object-contain bg-gray-700 mx-[2px] my-1'
+                          onError={(e) => {
+                            e.currentTarget.style.visibility = 'hidden';
+                          }}
+                        />
+                      );
+                    })}
+                    {hotTabSet.items.length > 8 && (
+                      <span className="text-[10px] text-gray-500 font-mono ml-1">+{hotTabSet.items.length - 8}</span>
+                    )}
                   </div>
 
                   <button
