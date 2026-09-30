@@ -168,14 +168,14 @@ export async function flushPendingSync(): Promise<void> {
     if (!isDirty) return;
 
     const state = await StorageService.get();
-    const { isPro, workspaces, activeWorkspaceID, nodes, rootIDs, groups } = state;
+    const { isPro, workspaces, activeWorkspaceID, nodes, rootIDs, groups, moodboardItems, hotTabs } = state;
 
     if (!isPro || !Array.isArray(workspaces)) {
         isDirty = false;
         return;
     }
 
-    const contentStr = JSON.stringify({ workspaces, activeWorkspaceID, nodes, rootIDs, groups });
+    const contentStr = JSON.stringify({ workspaces, activeWorkspaceID, nodes, rootIDs, groups, moodboardItems, hotTabs });
     const currHash = fastHash(contentStr);
 
     if (currHash === lastPushedHash) {
@@ -189,7 +189,9 @@ export async function flushPendingSync(): Promise<void> {
         activeWorkspaceID: activeWorkspaceID ?? "",
         nodes: nodes ?? {},
         rootIDs: rootIDs ?? [],
-        groups: groups ?? {}
+        groups: groups ?? {},
+        moodboardItems: moodboardItems,
+        hotTabs: hotTabs
     };
 
     const result = await pushSync(payload);
@@ -231,6 +233,8 @@ export async function initializeSync(): Promise<void> {
             activeWorkspaceID: remotePayload.activeWorkspaceID,
             nodes: remotePayload.nodes,
             rootIDs: remotePayload.rootIDs,
+            moodboardItems: remotePayload.moodboardItems,
+            hotTabs: remotePayload.hotTabs,
             lastSyncedAt: Date.now(),
         });
         lastPushedHash = fastHash(JSON.stringify({
@@ -238,7 +242,9 @@ export async function initializeSync(): Promise<void> {
             activeWorkspaceID: remotePayload.activeWorkspaceID,
             nodes: remotePayload.nodes,
             rootIDs: remotePayload.rootIDs,
-            groups: remotePayload.groups
+            groups: remotePayload.groups,
+            moodboardItems: remotePayload.moodboardItems,
+            hotTabs: remotePayload.hotTabs
         }));
     }
 }
@@ -256,8 +262,10 @@ export function setupSyncListeners(): void {
         const hasNodesChanged = JSON.stringify(oldData?.nodes) !== JSON.stringify(newData?.nodes);
         const hasRootsChanged = JSON.stringify(oldData?.rootIDs) !== JSON.stringify(newData?.rootIDs);
         const hasActiveWSChanged = oldData?.activeWorkspaceID !== newData?.activeWorkspaceID;
+        const hasMoodboardChanged = JSON.stringify(oldData?.moodboardItems) !== JSON.stringify(newData?.moodboardItems);
+        const hasHotTabsChanged = JSON.stringify(oldData?.hotTabs) !== JSON.stringify(newData?.hotTabs);
 
-        if (hasWorkspacesChanged || hasNodesChanged || hasRootsChanged || hasActiveWSChanged) {
+        if (hasWorkspacesChanged || hasNodesChanged || hasRootsChanged || hasActiveWSChanged || hasMoodboardChanged || hasHotTabsChanged) {
             triggerDebouncedPush();
         }
     });

@@ -105,4 +105,6 @@ export interface SyncPayload {
     nodes: Record<string | number, TabNode>;
     rootIDs: (string | number)[];
     groups: Record<string, TabGroup>;
+    moodboardItems?: Record<string, MoodboardItem>;
+    hotTabs?: Record<string, HotTabSet>;
 }

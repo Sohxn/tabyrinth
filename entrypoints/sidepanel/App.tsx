@@ -11,8 +11,12 @@ import { exportToPDF, exportMoodboardToPDF, exportVisualMoodboardToPDF } from '@
 import { downloadVisualMoodboardAsHtml } from '@/src/utils/exportVisualMoodboard';
 import { Board } from '../board/Board';
 
-// icons
-import { ArrowClockwiseIcon, MagnifyingGlassIcon, SlidersHorizontalIcon, BookIcon, LightningIcon, PlusIcon } from '@phosphor-icons/react';
+// icon packs
+import {
+  ArrowClockwiseIcon, MagnifyingGlassIcon,
+  SlidersHorizontalIcon, BookIcon, LightningIcon,
+  PlusIcon, EyeClosedIcon, EyeIcon
+} from '@phosphor-icons/react';
 
 // only for sync 
 import { createCheckoutSession, activateLicenseKey, getLicenseKey } from '@/src/services/sync';
@@ -34,6 +38,7 @@ export default function App() {
   const [inputKey, setInputKey] = useState('');
   const [statusMessage, setStatusMessage] = useState<{ text: string; isError: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isKeyVisible, setIsKeyVisible] = useState(false);
 
   // workspace related 
   const regularRootIDs = getRegularRootIDs(activeWorkspaceID);
@@ -92,7 +97,7 @@ export default function App() {
 
   const handleDeleteHotTabSet = async (setId: string) => {
     try {
-      const schema = await StorageService.get();
+      await StorageService.get();
       await StorageService.deleteHotTabSet(setId);
       await initHotTabs();
     } catch (error) {
@@ -110,24 +115,24 @@ export default function App() {
         workspaceID: activeWorkspaceID
       });
     downloadMarkdown(markdown, `tabyrinth-notes-${wsName.replace(/\s+/g, '-')}-${Date.now()}.md`);
-  }
+  };
 
   const handleMarkdownExportAll = async () => {
     const schema = await StorageService.get();
     const markdown = buildMarkdownExport(schema);
     downloadMarkdown(markdown, `tabyrinth-notes-all-${Date.now()}.md`);
-  }
+  };
 
   // PDF export handlers
   const handlePDFExportWorkspace = async () => {
     const schema = await StorageService.get();
     await exportToPDF(schema, { workspaceID: activeWorkspaceID });
-  }
+  };
 
   const handlePDFExportAll = async () => {
     const schema = await StorageService.get();
     await exportToPDF(schema);
-  }
+  };
 
   // Moodboard export handlers
   const handleMoodboardExportWorkspace = async () => {
@@ -135,23 +140,23 @@ export default function App() {
     const wsName = (schema.workspaces || []).find(w => w.id === activeWorkspaceID)?.name || 'workspace';
     const markdown = buildMoodboardExport(schema, { workspaceID: activeWorkspaceID });
     downloadMoodboard(markdown, `tabyrinth-moodboard-${wsName.replace(/\s+/g, '-')}-${Date.now()}.md`);
-  }
+  };
 
   const handleMoodboardExportAll = async () => {
     const schema = await StorageService.get();
     const markdown = buildMoodboardExport(schema);
     downloadMoodboard(markdown, `tabyrinth-moodboard-all-${Date.now()}.md`);
-  }
+  };
 
   const handleMoodboardPDFWorkspace = async () => {
     const schema = await StorageService.get();
     await exportMoodboardToPDF(schema, { workspaceID: activeWorkspaceID });
-  }
+  };
 
   const handleMoodboardPDFAll = async () => {
     const schema = await StorageService.get();
     await exportMoodboardToPDF(schema);
-  }
+  };
 
   // Visual Moodboard export handlers
   const handleVisualExportWorkspace = async (format: 'pdf' | 'image' | 'html') => {
@@ -165,7 +170,12 @@ export default function App() {
     } else {
       await downloadVisualMoodboardAsHtml(units, `${filename}.html`);
     }
-  }
+  };
+
+  // client side license key visibility
+  const toggleLicenseKeyVisibility = () => {
+    setIsKeyVisible(prev => !prev)
+  };
 
   useEffect(() => {
     if (treeContainerRef.current) {
@@ -287,6 +297,24 @@ export default function App() {
     } else {
       setStatusMessage({ text: result.error || 'Invalid license key.', isError: true });
     }
+  };
+
+  const MaskedKey = ({ value }: { value: string | null }) => {
+    if (!value) return null;
+
+    return (
+      <div
+        className="flex min-w-0 flex-1 flex-nowrap items-center gap-[3px] overflow-hidden"
+        aria-label="Hidden license key">
+        {value.split('').map((char, i) =>
+          char === '-' ? (
+            <span key={i} className="shrink-0 px-1 leading-none text-gray-400 select-none"></span>
+          ) : (
+            <div key={i} className="w-4 h-3 rounded-xs bg-orange-500" />
+          )
+        )}
+      </div>
+    );
   };
 
   return (
@@ -600,7 +628,20 @@ export default function App() {
           {isPro ? (
             <div className="bg-white/5 border border-white/2 rounded-2xl p-4 flex flex-col gap-2">
               <div className="text-sm text-gray-400">Plus License Active</div>
-              <div className="font-mono font-bold text-xl text-[#FF6314] break-all">{activeKey}</div>
+              <div className="flex items-center gap-3">
+                <div className="flex min-w-0 flex-1 items-center">
+                  {isKeyVisible ? (
+                    <span className="truncate text-xl text-orange-500 font-bold">{activeKey}</span>
+                  ) : (
+                    <MaskedKey value={activeKey} />
+                  )}
+                </div>
+
+                <button onClick={() => setIsKeyVisible(v => !v)} className="flex w-8 h-8 justify-end items-center shrink-0">
+                  {isKeyVisible ? <div className='bg-white/10 p-2 rounded-xl text-orange-500 hover:bg-white/20'><EyeClosedIcon size={16} weight='bold' /></div> :
+                    <div className='bg-white/10 p-2 rounded-xl text-orange-500 hover:bg-white/20'><EyeIcon size={16} weight='bold' /></div>}
+                </button>
+              </div>
               <div className="text-[14px] text-gray-400">
                 Cross platform sync is active
               </div>
