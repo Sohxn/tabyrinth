@@ -1,5 +1,5 @@
 # Sync Verification and Feature Gating Plan
-# #todo 29-09-2026
+# #todo 30-09-2026
 This document outlines the strategy for ensuring that "Plus" features (Sync, Groups, Hot Tabs, and Exporting) are correctly gated behind the payment verification system and provides a detailed test plan for a fresh sync state.
 
 ## 1. Current Payment Verification Analysis
