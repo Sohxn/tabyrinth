@@ -9,8 +9,8 @@ let maxWaitTimer: ReturnType<typeof setTimeout> | null = null;
 let isDirty = false;
 let lastPushedHash = "";
 
-const DEBOUNCE_DELAY = 3000;
-const MAX_WAIT_DELAY = 15000;
+const DEBOUNCE_DELAY = 1000;
+const MAX_WAIT_DELAY = 5000;
 
 
 //todo: replace with a cryptographic hash 
@@ -63,6 +63,8 @@ export async function activateLicenseKey(rawKey: string): Promise<{ success: boo
 
         await chrome.storage.local.set({
             licenseKey: rawKey.trim(),
+        });
+        await StorageService.set({
             isPro: true
         });
 
