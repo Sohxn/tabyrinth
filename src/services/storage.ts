@@ -7,7 +7,6 @@ const InitState: TreeStorageSchema = {
   lastActiveTabID: null,
   activeMediaTabID: null,
   activeMediaAccentColor: '#ffffff',
-  isPro: false,
   activeWorkspaceID: 'workspace-default',
   moodboardItems: {},
   moodboardVisible: false,
@@ -19,12 +18,9 @@ const InitState: TreeStorageSchema = {
   }]
 };
 
-let storageQueue: Promise<any> = Promise.resolve();
-
+// Use Web Locks API to serialize storage access across all extension contexts
 const enqueue = <T>(task: () => Promise<T>): Promise<T> => {
-  return new Promise((resolve, reject) => {
-    storageQueue = storageQueue.then(task).then(resolve).catch(reject);
-  });
+  return navigator.locks.request("tabyrinth-storage", task);
 };
 
 // helper for derive groups
@@ -161,8 +157,6 @@ export const StorageService = {
       const data = await chrome.storage.local.get('tabTreeData');
       const current = (data.tabTreeData as TreeStorageSchema) || InitState;
 
-      // Actually merge, don't replace — a partial nodes patch should not
-      // wipe out every tab that wasn't included in it.
       const mergedNodes = patch.nodes
         ? { ...current.nodes, ...patch.nodes }
         : current.nodes;
@@ -180,7 +174,6 @@ export const StorageService = {
     });
   },
 
-  // edge case for SPA (single page applications)
   async updateNodeProperties(tabID: string | number, updates: Partial<TabNode>): Promise<void> {
     return enqueue(async () => {
       const data = await chrome.storage.local.get("tabTreeData");
@@ -196,7 +189,6 @@ export const StorageService = {
         },
       };
 
-      // update: tree consistency 
       const {
         nodes: sanitizedNodes,
         rootIDs: sanitizedRoots,
@@ -207,7 +199,7 @@ export const StorageService = {
         tabTreeData: {
           ...state,
           nodes: sanitizedNodes,
-          roots: sanitizedRoots,
+          rootIDs: sanitizedRoots,
           groups
         },
       });
@@ -223,7 +215,6 @@ export const StorageService = {
       const parentNode = node.parentID ? state.nodes[node.parentID] : null;
       const assignedWorkspace = node.workspaceID || parentNode?.workspaceID || state.activeWorkspaceID || 'workspace-default';
 
-      //solved race condition
       const updatedNodes: Record<string | number, TabNode> = {
         ...state.nodes,
         [node.id]: existing ? {
@@ -282,13 +273,11 @@ export const StorageService = {
     });
   },
 
-  // reset all closed / stale nodes and keep only the active tabs
   async resetToActiveTabsOnly(): Promise<void> {
     return enqueue(async () => {
       const openTabs = await chrome.tabs.query({});
       const data = await chrome.storage.local.get("tabTreeData");
       const state = (data.tabTreeData as TreeStorageSchema) || InitState;
-      // fresh
       const freshNodes: Record<string | number, TabNode> = {};
       const assignedWorkspace = state.activeWorkspaceID || 'workspace-default';
 
@@ -296,7 +285,6 @@ export const StorageService = {
         if (!tab.id) continue;
         const existing = state.nodes[tab.id];
 
-        // check isLoading once
         freshNodes[tab.id] = {
           id: tab.id,
           title: tab.title || existing?.title || 'New Tab',
@@ -324,8 +312,6 @@ export const StorageService = {
     });
   },
 
-
-  // delete node entirely 
   async deleteNode(nodeId: string | number): Promise<void> {
     return enqueue(async () => {
       const data = await chrome.storage.local.get("tabTreeData");
@@ -335,7 +321,6 @@ export const StorageService = {
 
       delete state.nodes[nodeId];
 
-      // Detach from parent node
       Object.values(state.nodes).forEach((n) => {
         n.childrenIDs = n.childrenIDs.filter((id) => id !== nodeId);
       });
@@ -353,8 +338,6 @@ export const StorageService = {
     });
   },
 
-
-  // restore old tree and reopen ghost node
   async reopenNode(oldNodeID: string | number): Promise<void> {
     return enqueue(async () => {
       const data = await chrome.storage.local.get("tabTreeData");
@@ -363,7 +346,6 @@ export const StorageService = {
 
       if (!oldNode) return;
 
-      //spawn a new browser tab with the node's saved URL
       const newTab = await chrome.tabs.create({ url: oldNode.url, active: true });
       if (!newTab.id) return;
 
@@ -372,8 +354,6 @@ export const StorageService = {
         ...state.nodes
       };
 
-      //build revived tab node and remove old ghost node key 
-      // (only if tabID changes)
       const revivedNode: TabNode = {
         ...oldNode,
         id: newID,
@@ -383,7 +363,6 @@ export const StorageService = {
         title: newTab.title || oldNode.title
       };
 
-      // **fix: link the orphaned children as well on ghost tab revival
       if (oldNode.childrenIDs && oldNode.childrenIDs.length > 0) {
         oldNode.childrenIDs.forEach((childID) => {
           const child = updatedNodes[childID];
@@ -411,15 +390,6 @@ export const StorageService = {
         }
       }
 
-      // revert if doesnt work
-      // let updatedRoots = [
-      //   ...state.rootIDs
-      // ];
-
-      // if (updatedRoots.includes(oldNodeID)) {
-      //   updatedRoots = updatedRoots.map((id) => (id === oldNodeID ? newID : id));
-      // }
-
       const {
         nodes: sanitizedNodes,
         rootIDs: sanitizedRoots,
@@ -444,8 +414,6 @@ export const StorageService = {
     }));
   },
 
-
-  // per tab notes
   async addNoteToTab(tabID: string | number, content: string, sourceURL?: string): Promise<void> {
     return enqueue(async () => {
       const data = await chrome.storage.local.get('tabTreeData');
@@ -496,7 +464,7 @@ export const StorageService = {
         ...state.nodes,
         [tabID]: {
           ...target,
-          nodes: target.notes.filter((n) => n.id !== noteID),
+          notes: target.notes.filter((n) => n.id !== noteID),
         },
       };
 
@@ -517,7 +485,6 @@ export const StorageService = {
     });
   },
 
-  // moodboard / ideation related
   async addMoodboardItem(item: Omit<MoodboardItem, 'id' | 'createdAt'>): Promise<MoodboardItem> {
     return enqueue(async () => {
       const data = await chrome.storage.local.get('tabTreeData');
@@ -579,7 +546,6 @@ export const StorageService = {
     return Object.values(state.hotTabs || {});
   },
 
-  // clear tab tree
   async clearAll(): Promise<void> {
     return enqueue(async () => {
       await chrome.storage.local.remove('tabTreeData');

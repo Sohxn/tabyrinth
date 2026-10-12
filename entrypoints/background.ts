@@ -6,7 +6,6 @@ import { validatePersistedLicense, initializeSync, setupSyncListeners } from "@/
 import { smartTextToHTML } from '@/src/utils/noteText'
 import { sanitizeHTML } from "@/src/utils/sanitizeHTML";
 
-// not the best 
 const RESOURCE_ID_KEYS = new Set([
   'v', 'id', 'item', 'doc', 'article', 'page_id'
 ]);
@@ -17,7 +16,6 @@ function isPlaceholder(url: string, title: string): boolean {
   return u === '' || u === 'about:blank' || u.startsWith('chrome://newtab') || t === 'new tab';
 }
 
-// edge case: SPAs like google fonts
 function isSamePageNavigation(oldUrlStr: string, newUrlStr: string): boolean {
   if (!oldUrlStr || !newUrlStr) return false;
 
@@ -39,7 +37,6 @@ function isSamePageNavigation(oldUrlStr: string, newUrlStr: string): boolean {
 
     for (const key of RESOURCE_ID_KEYS) {
       if (oldParams.has(key) && newParams.has(key) && oldParams.get(key) !== newParams.get(key)) {
-        // split
         return false;
       }
     }
@@ -50,7 +47,6 @@ function isSamePageNavigation(oldUrlStr: string, newUrlStr: string): boolean {
   }
 }
 
-// validate license on boot
 async function bootExtension() {
   console.log("checking for license");
   const isPro = await validatePersistedLicense();
@@ -63,7 +59,6 @@ async function bootExtension() {
   }
 }
 
-
 async function reconcileMediaState() {
   const state = await StorageService.get();
   const audibleTabs = await chrome.tabs.query({ audible: true });
@@ -74,9 +69,6 @@ async function reconcileMediaState() {
   if (!stillAudible) {
     const nextTab = audibleTabs.length > 0 ? audibleTabs[0] : null;
     const nextTabID = nextTab?.id ?? null;
-    // if (next !== currentlyTracked) {
-    //   await StorageService.setActiveMediaTab(next);
-    // }
     const nextAccentColor = nextTab ? getAccentColorFromURL(nextTab.url) : null;
 
     await StorageService.set({
@@ -95,7 +87,7 @@ async function reconcileMediaState() {
 
 export default defineBackground(() => {
 
-  // boot extension
+  // boot extension on every wake-up to ensure listeners are active
   bootExtension();
 
   chrome.sidePanel.setPanelBehavior({
@@ -126,11 +118,9 @@ export default defineBackground(() => {
       await StorageService.upsertNode(tabNode);
     }
   };
-  // sync tabs with the storage
-  syncExistingTabs();
 
-  // on install
   chrome.runtime.onInstalled.addListener(async () => {
+    await syncExistingTabs();
     await bootExtension();
 
     chrome.contextMenus.create({
@@ -152,13 +142,12 @@ export default defineBackground(() => {
     });
   });
 
-  // on startup
   chrome.runtime.onStartup.addListener(async () => {
+    await syncExistingTabs();
     await bootExtension();
     reconcileMediaState();
   });
 
-  // KEYBINDS
   chrome.commands.onCommand.addListener((command, tab) => {
     if (command === "open-tabyrinth") {
       if (tab?.windowId === undefined) return;
@@ -249,7 +238,6 @@ export default defineBackground(() => {
     });
   });
 
-  //** fix for race condition: tab creation from ghost tab
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type === 'reopen-node') {
       StorageService.reopenNode(message.nodeID).then(() => sendResponse({
@@ -267,14 +255,12 @@ export default defineBackground(() => {
     if (alarm.name === 'media-reconcile') reconcileMediaState();
   });
 
-  // activation
   chrome.tabs.onActivated.addListener(async (activeInfo) => {
     await StorageService.set({
       lastActiveTabID: activeInfo.tabId
     });
   });
 
-  // tab creation (new tab no parent -> automatically a root node)
   chrome.tabs.onCreated.addListener(async (tab) => {
     if (!tab.id) return;
 
@@ -302,7 +288,6 @@ export default defineBackground(() => {
     await StorageService.upsertNode(newTabNode);
   });
 
-  // tab updation
   chrome.tabs.onUpdated.addListener(async (tabID, changeInfo, tab) => {
     if (!tab.url) return;
 
@@ -321,7 +306,6 @@ export default defineBackground(() => {
       const samePage = isSamePageNavigation(existing.url, tab.url!);
       const currWSID = existing.workspaceID || state.activeWorkspaceID || 'default';
 
-      // same page, metadata only -> no split
       if (samePage || isPlaceholder(existing.url, existing.title)) {
         return {
           nodes: {
@@ -336,7 +320,6 @@ export default defineBackground(() => {
         };
       }
 
-      // navigation -> split so the old page stays in the tree
       const historyNodeID = `hist_${tabID}_${Date.now()}`;
 
       const historyNode: TabNode = {
@@ -367,7 +350,6 @@ export default defineBackground(() => {
         [tabID]: updatedActiveNode
       };
 
-      // point the old parent at the history node instead of the live tab
       if (existing.parentID !== null && existing.parentID !== undefined && state.nodes[existing.parentID]) {
         const parentNode = state.nodes[existing.parentID];
         if (parentNode) {
@@ -376,14 +358,12 @@ export default defineBackground(() => {
             childrenIDs: parentNode.childrenIDs.map((cId) => (cId === tabID ? historyNodeID : cId))
           };
         }
-
       }
 
       return { nodes: updatedNodes };
     });
   });
 
-  // tab close / removal
   chrome.tabs.onRemoved.addListener(async (tabID) => {
     const state = await StorageService.get();
     const node = state.nodes[tabID];
@@ -399,16 +379,13 @@ export default defineBackground(() => {
     }
   });
 
-  // detect background audio 
   chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     if (changeInfo.audible !== undefined) {
       const state = await StorageService.get();
 
       if (changeInfo.audible) {
-        // Pin this newly playing tab as the active media tab
         await StorageService.setActiveMediaTab(tabId);
       } else if (state.activeMediaTabID === tabId) {
-        // Tab went silent: Check if any other tab is playing audio
         const audibleTabs = await chrome.tabs.query({ audible: true });
         const nextTabId = audibleTabs.length > 0 ? audibleTabs[0]?.id ?? null : null;
         await StorageService.setActiveMediaTab(nextTabId);
@@ -416,26 +393,12 @@ export default defineBackground(() => {
     }
   });
 
-  // Clear pinned tab if it gets closed
   chrome.tabs.onRemoved.addListener(async (tabId) => {
     const state = await StorageService.get();
     if (state.activeMediaTabID === tabId) {
       const audibleTabs = await chrome.tabs.query({ audible: true });
       const nextTabId = audibleTabs.length > 0 ? audibleTabs[0]?.id ?? null : null;
       await StorageService.setActiveMediaTab(nextTabId);
-    }
-  });
-
-
-  // periodic remote pulling
-  // todo: Ill see if I genuinely need this feature
-  chrome.alarms.create('cloud-pull-sync', { periodInMinutes: 5 });
-  chrome.alarms.onAlarm.addListener(async (alarm) => {
-    if (alarm.name === 'cloud-pull-sync') {
-      const state = await StorageService.get();
-      if (state.isPro) {
-        initializeSync();
-      }
     }
   });
 });

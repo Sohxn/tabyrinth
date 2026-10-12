@@ -64,9 +64,8 @@ export interface TreeStorageSchema {
     lastActiveTabID: number | null;
     activeMediaTabID: string | number | null;
     activeMediaAccentColor: string | null;
-    // subscription status (preferibly use in another type for user)
-    isPro: boolean;
-    // workspace persistence
+    // subscription status
+    // isPro moved to top-level storage for consistency
     lastSyncedAt?: number;
     activeWorkspaceID: string;
     workspaces?: Workspace[];
@@ -100,6 +99,7 @@ export interface HotTabSet {
 // sync
 export interface SyncPayload {
     updatedAt: number;
+    baseUpdatedAt?: number;
     activeWorkspaceID: string;
     workspaces: Workspace[];
     nodes: Record<string | number, TabNode>;
