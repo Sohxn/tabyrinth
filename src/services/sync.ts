@@ -1,19 +1,9 @@
 import { StorageService } from "./storage";
 import { type SyncPayload, type TreeStorageSchema } from "../types";
 import { URLs } from "../requestURLs/urls";
-
 const WURL = URLs['prod'];
 
-let pushTimer: ReturnType<typeof setTimeout> | null = null;
-let maxWaitTimer: ReturnType<typeof setTimeout> | null = null;
-let isDirty = false;
-let lastPushedHash = "";
-
-const DEBOUNCE_DELAY = 1000;
-const MAX_WAIT_DELAY = 5000;
-
-
-//todo: replace with a cryptographic hash 
+// Non-cryptographic hash to detect state changes
 function fastHash(str: string) {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -22,6 +12,14 @@ function fastHash(str: string) {
     }
     return hash.toString(36);
 }
+
+let pushTimer: ReturnType<typeof setTimeout> | null = null;
+let maxWaitTimer: ReturnType<typeof setTimeout> | null = null;
+let isDirty = false;
+let lastPushedHash = "";
+
+const DEBOUNCE_DELAY = 1000;
+const MAX_WAIT_DELAY = 5000;
 
 export async function getDeviceID(): Promise<string> {
     const result = await chrome.storage.local.get("deviceId");
@@ -79,7 +77,37 @@ export async function activateLicenseKey(rawKey: string): Promise<{ success: boo
     }
 }
 
-export async function pushSync(payload: SyncPayload): Promise<{ success: boolean; locked?: boolean }> {
+// activation license persistence 
+export async function validatePersistedLicense(): Promise<boolean> {
+    const result = await chrome.storage.local.get("licenseKey");
+    const key = typeof result.licenseKey === "string" ? result.licenseKey : null;
+
+    if (!key) return false;
+    try {
+        await StorageService.set({ isPro: true });
+        const deviceID = await getDeviceID();
+        const response = await fetch(`${WURL}/api/verify-key`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${key}`,
+                "X-Device-ID": deviceID
+            }
+        });
+        if (!response.ok) {
+            await chrome.storage.local.set({ licenseKey: null });
+            await StorageService.set({ isPro: false });
+            return false;
+        }
+        return true;
+
+    } catch (err) {
+        console.error("License validation error");
+        return true;
+    }
+}
+
+export async function pushSync(payload: SyncPayload): Promise<{ success: boolean; locked?: boolean; conflict?: boolean }> {
     const lk = await getLicenseKey();
     if (!lk) return { success: false };
 
@@ -96,9 +124,13 @@ export async function pushSync(payload: SyncPayload): Promise<{ success: boolean
         });
 
         if (response.status === 429) {
-            console.warn("Sync temporarily locked: Another active session in progress.");
-
+            console.warn("Sync temporarily locked: Maximum concurrent sessions reached.");
             return { success: false, locked: true };
+        }
+
+        if (response.status === 409) {
+            console.warn("Sync conflict: Server has newer data. Triggering resolution.");
+            return { success: false, conflict: true };
         }
 
         if (response.status === 403 || response.status === 401) {
@@ -128,7 +160,7 @@ export async function pullSync(): Promise<{ data: SyncPayload | null; locked?: b
         });
 
         if (response.status === 429) {
-            console.warn("Sync temporarily locked: Another active session in progress.");
+            console.warn("Sync temporarily locked: Maximum concurrent sessions reached.");
             return { data: null, locked: true };
         }
 
@@ -162,7 +194,6 @@ export async function createCheckoutSession(email: string): Promise<string> {
     return data.paymentUrl;
 }
 
-// only push if system is dirty and state has changed
 export async function flushPendingSync(): Promise<void> {
     if (pushTimer) { clearTimeout(pushTimer); pushTimer = null; }
     if (maxWaitTimer) { clearTimeout(maxWaitTimer); maxWaitTimer = null; }
@@ -197,10 +228,50 @@ export async function flushPendingSync(): Promise<void> {
     };
 
     const result = await pushSync(payload);
+
     if (result.success) {
         lastPushedHash = currHash;
         isDirty = false;
         await StorageService.set({ lastSyncedAt: payload.updatedAt });
+    } else if (result.conflict) {
+        // Handle 409 Conflict: Pull -> Merge -> Push
+        console.log("Resolving sync conflict...");
+        const { data: remotePayload } = await pullSync();
+        if (remotePayload) {
+            // Simple merge: Use remote state but preserve local "dirty" status for any newer changes
+            // In a real CRDT this would be more complex, but for now we update local to remote
+            // then re-evaluate if we are still dirty.
+            await StorageService.set({
+                workspaces: remotePayload.workspaces,
+                activeWorkspaceID: remotePayload.activeWorkspaceID,
+                nodes: remotePayload.nodes,
+                rootIDs: remotePayload.rootIDs,
+                groups: remotePayload.groups,
+                moodboardItems: remotePayload.moodboardItems,
+                hotTabs: remotePayload.hotTabs,
+                lastSyncedAt: remotePayload.updatedAt,
+            });
+
+            // After merge, re-check if current state still differs from what we just pulled
+            const newState = await StorageService.get();
+            const newStateStr = JSON.stringify({
+                workspaces: newState.workspaces,
+                activeWorkspaceID: newState.activeWorkspaceID,
+                nodes: newState.nodes,
+                rootIDs: newState.rootIDs,
+                groups: newState.groups,
+                moodboardItems: newState.moodboardItems,
+                hotTabs: newState.hotTabs
+            });
+            lastPushedHash = fastHash(newStateStr);
+
+            // If still dirty, try pushing again (though usually a merge settles it)
+            if (isDirty) {
+                setTimeout(flushPendingSync, 1000);
+            } else {
+                isDirty = false;
+            }
+        }
     }
 }
 
@@ -219,7 +290,6 @@ export function triggerDebouncedPush(): void {
     }
 }
 
-// sync life cycle
 export async function initializeSync(): Promise<void> {
     const state = await StorageService.get();
     if (!state.isPro) return;

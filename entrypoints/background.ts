@@ -2,10 +2,9 @@ import { defineBackground } from "#imports";
 import { StorageService } from "@/src/services/storage";
 import { type TabNode } from "@/src/types";
 import { getAccentColorFromURL } from "@/src/utils/mediaColors";
-import { initializeSync, setupSyncListeners } from "@/src/services/sync";
+import { validatePersistedLicense, initializeSync, setupSyncListeners } from "@/src/services/sync";
 import { smartTextToHTML } from '@/src/utils/noteText'
 import { sanitizeHTML } from "@/src/utils/sanitizeHTML";
-
 
 // not the best 
 const RESOURCE_ID_KEYS = new Set([
@@ -51,6 +50,20 @@ function isSamePageNavigation(oldUrlStr: string, newUrlStr: string): boolean {
   }
 }
 
+// validate license on boot
+async function bootExtension() {
+  console.log("checking for license");
+  const isPro = await validatePersistedLicense();
+  if (isPro) {
+    await initializeSync();
+    setupSyncListeners();
+    console.log("Pro activated, sync restored.");
+  } else {
+    console.log("No license found: Running guest mode.");
+  }
+}
+
+
 async function reconcileMediaState() {
   const state = await StorageService.get();
   const audibleTabs = await chrome.tabs.query({ audible: true });
@@ -80,10 +93,10 @@ async function reconcileMediaState() {
   }
 }
 
-
 export default defineBackground(() => {
 
-  setupSyncListeners();
+  // boot extension
+  bootExtension();
 
   chrome.sidePanel.setPanelBehavior({
     openPanelOnActionClick: true
@@ -118,7 +131,7 @@ export default defineBackground(() => {
 
   // on install
   chrome.runtime.onInstalled.addListener(async () => {
-    await initializeSync();
+    await bootExtension();
 
     chrome.contextMenus.create({
       id: "add-note-to-tab",
@@ -141,15 +154,12 @@ export default defineBackground(() => {
 
   // on startup
   chrome.runtime.onStartup.addListener(async () => {
-    await initializeSync();
+    await bootExtension();
     reconcileMediaState();
   });
 
   // KEYBINDS
   chrome.commands.onCommand.addListener((command, tab) => {
-    // if (command !== "open-tabyrinth") return;
-    // if (tab?.windowId === undefined) return;
-    // chrome.sidePanel.open({ windowId: tab.windowId }).catch(console.error);
     if (command === "open-tabyrinth") {
       if (tab?.windowId === undefined) return;
       chrome.sidePanel.open({
@@ -157,7 +167,6 @@ export default defineBackground(() => {
       }).catch(console.error);
       return;
     }
-
   });
 
   chrome.contextMenus.onClicked.addListener(async (info, tab) => {
@@ -182,12 +191,10 @@ export default defineBackground(() => {
           await StorageService.addNoteToTab(tab.id, htmlToSave, info.pageUrl);
         }
       } catch (err) {
-        // logging
         console.error('[ERROR] Failed to capture selection: ', err);
       }
     }
 
-    // moodboarding / ideation
     if (info.menuItemId === "pin-image-to-board" && info.srcUrl) {
       try {
         const state = await StorageService.get();
@@ -217,7 +224,6 @@ export default defineBackground(() => {
           }
         });
 
-        //*fixed: sanitization at render time
         const rawHTML = injectionRes[0]?.result || "";
         if (rawHTML.trim().length > 0) {
           const state = await StorageService.get();
@@ -243,12 +249,7 @@ export default defineBackground(() => {
     });
   });
 
-  //todo: remove redundant listener 
-  chrome.runtime.onStartup.addListener(() => {
-    reconcileMediaState();
-  });
-
-  //** fix for race condition: tab creation from ghost tab 
+  //** fix for race condition: tab creation from ghost tab
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message?.type === 'reopen-node') {
       StorageService.reopenNode(message.nodeID).then(() => sendResponse({
@@ -259,7 +260,6 @@ export default defineBackground(() => {
       }));
       return true;
     }
-
   });
 
   chrome.alarms.create('media-reconcile', { periodInMinutes: 1 });
@@ -427,10 +427,15 @@ export default defineBackground(() => {
   });
 
 
-  //periodic remote pulling
+  // periodic remote pulling
   // todo: Ill see if I genuinely need this feature
   chrome.alarms.create('cloud-pull-sync', { periodInMinutes: 5 });
-  chrome.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === 'cloud-pull-sync') initializeSync();
+  chrome.alarms.onAlarm.addListener(async (alarm) => {
+    if (alarm.name === 'cloud-pull-sync') {
+      const state = await StorageService.get();
+      if (state.isPro) {
+        initializeSync();
+      }
+    }
   });
 });
