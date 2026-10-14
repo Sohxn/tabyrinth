@@ -101,9 +101,17 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false, isChainCont
 
     if (target.isClosed) {
       await chrome.runtime.sendMessage({ type: 'reopen-node', nodeID: target.id });
-    } else {
+      return;
+    }
+
+    try {
       await chrome.tabs.update(Number(target.id), { active: true });
       await chrome.windows.update(target.windowID, { focused: true });
+    } catch {
+      // No live tab exists locally for this node — it most likely arrived via
+      // sync from another device whose session ended with this tab open.
+      // Treat it as a reopen request.
+      await chrome.runtime.sendMessage({ type: 'reopen-node', nodeID: target.id });
     }
   };
 

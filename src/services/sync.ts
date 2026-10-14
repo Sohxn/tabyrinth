@@ -221,8 +221,11 @@ async function applyRemote(remote: SyncPayload): Promise<void> {
             if (liveIDs.has(String(id))) continue;
             incoming[id] = {
                 ...node,
+                // Preserve the remote node's own closed/open state. A node that
+                // was open on the remote device (e.g. the remote session ended
+                // cleanly) should not be demoted to "closed" here just because
+                // we don't have a live tab for it.
                 windowID: node.windowID ?? chrome.windows.WINDOW_ID_NONE,
-                isClosed: true,
                 isLoading: false,
             };
         }

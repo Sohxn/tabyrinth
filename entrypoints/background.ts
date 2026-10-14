@@ -370,7 +370,12 @@ export default defineBackground(() => {
     });
   });
 
-  chrome.tabs.onRemoved.addListener(async (tabID) => {
+  chrome.tabs.onRemoved.addListener(async (tabID, removeInfo) => {
+    // If the tab is disappearing because its window/browser is closing, this is
+    // not a user-initiated close — the session is simply ending. Leave the node
+    // as-is so its open/closed state is preserved across devices.
+    if (removeInfo.isWindowClosing) return;
+
     const state = await StorageService.get();
     const node = state.nodes[tabID];
     if (!node) return;
