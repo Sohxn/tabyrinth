@@ -20,7 +20,10 @@ type PullOutcome =
     | { status: "locked" | "auth" | "error" };
 
 const runExclusive = <T>(task: () => Promise<T>): Promise<T> =>
-    navigator.locks.request("tabyrinth-sync", task);
+    navigator.locks.request("tabyrinth-sync", task) as Promise<T>;
+
+const runExclusiveDeviceId = <T>(task: () => Promise<T>): Promise<T> =>
+    navigator.locks.request("tabyrinth-device-id", task) as Promise<T>;
 
 async function recordStatus(state: string, detail?: string): Promise<void> {
     const logMsg = `[SYNC] ${state}${detail ? ` - ${detail}` : ""}`;
@@ -78,7 +81,7 @@ async function contentHash(state: TreeStorageSchema): Promise<string> {
 }
 
 export function getDeviceID(): Promise<string> {
-    return navigator.locks.request("tabyrinth-device-id", async () => {
+    return runExclusiveDeviceId(async () => {
         const { deviceId } = await chrome.storage.local.get("deviceId");
         if (typeof deviceId === "string") return deviceId;
         const fresh = crypto.randomUUID();

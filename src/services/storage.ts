@@ -20,7 +20,7 @@ const InitState: TreeStorageSchema = {
 
 // Use Web Locks API to serialize storage access across all extension contexts
 const enqueue = <T>(task: () => Promise<T>): Promise<T> => {
-  return navigator.locks.request("tabyrinth-storage", task);
+  return navigator.locks.request("tabyrinth-storage", task) as Promise<T>;
 };
 
 // helper for derive groups

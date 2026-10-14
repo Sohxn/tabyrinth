@@ -150,7 +150,6 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
                 nodes: schema.nodes,
                 rootIDs: schema.rootIDs,
                 lastActiveTabID: schema.lastActiveTabID,
-                isPro: schema.isPro,
                 expandedNodeIDs: nextExpanded,
                 activeMediaTabID: schema.activeMediaTabID ?? null,
                 workspaces: schema.workspaces && schema.workspaces.length > 0 ? schema.workspaces : state.workspaces,
