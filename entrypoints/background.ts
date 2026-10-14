@@ -47,6 +47,7 @@ function isSamePageNavigation(oldUrlStr: string, newUrlStr: string): boolean {
   }
 }
 
+
 async function bootExtension() {
   console.log("checking for license");
   const isPro = await validatePersistedLicense();

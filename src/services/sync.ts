@@ -138,6 +138,7 @@ async function handleAuthFailure(res: Response): Promise<void> {
 }
 
 async function pull(): Promise<PullOutcome> {
+    console.log("[SYNC] Fetching remote data...");
     const res = await call("GET");
     if (!res) return { status: "error" };
     if (res.status === 429) return { status: "locked" };
@@ -150,6 +151,7 @@ async function pull(): Promise<PullOutcome> {
         return { status: "error" };
     }
     const body = await res.json();
+    console.log("[SYNC] Pull successful");
     return { status: "ok", data: body.data ?? null };
 }
 
