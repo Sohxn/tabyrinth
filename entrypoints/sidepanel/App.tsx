@@ -19,7 +19,7 @@ import {
 } from '@phosphor-icons/react';
 
 // only for sync 
-import { createCheckoutSession, activateLicenseKey, getLicenseKey } from '@/src/services/sync';
+import { createCheckoutSession, activateLicenseKey, isProActive } from '@/src/services/sync';
 import { GhostGroup } from './GhostGroup';
 
 
@@ -54,12 +54,21 @@ export default function App() {
       (i) => i.workspaceID === activeWorkspaceID
     ).length
   );
-  // settings button function
   const handleOpenSettings = () => {
     setIsSettingsOpen(!isSettingsOpen);
   }
 
+  // Reads the persisted licence rather than the React flag, so a bypassed
+  // UI that calls a Pro handler directly still gets rejected. Returns true
+  // when the action may proceed. Surfaces a status message on rejection.
+  const requirePro = async (): Promise<boolean> => {
+    if (await isProActive()) return true;
+    setStatusMessage({ text: 'Tabyrinth Plus required', isError: true });
+    return false;
+  };
+
   const handleCreateHotTabSet = async () => {
+    if (!(await requirePro())) return;
     const name = window.prompt('Name this Hot Tab starter');
     if (!name?.trim()) return;
 
@@ -96,6 +105,7 @@ export default function App() {
   };
 
   const handleDeleteHotTabSet = async (setId: string) => {
+    if (!(await requirePro())) return;
     try {
       await StorageService.get();
       await StorageService.deleteHotTabSet(setId);
@@ -107,6 +117,7 @@ export default function App() {
 
   // markdown export handlers 
   const handleMarkdownExportWorkspace = async () => {
+    if (!(await requirePro())) return;
     const schema = await StorageService.get();
     const wsName = (schema.workspaces || []).find(w => w.id === activeWorkspaceID)?.name || 'workspace';
     const markdown = buildMarkdownExport(
@@ -118,6 +129,7 @@ export default function App() {
   };
 
   const handleMarkdownExportAll = async () => {
+    if (!(await requirePro())) return;
     const schema = await StorageService.get();
     const markdown = buildMarkdownExport(schema);
     downloadMarkdown(markdown, `tabyrinth-notes-all-${Date.now()}.md`);
@@ -125,17 +137,20 @@ export default function App() {
 
   // PDF export handlers
   const handlePDFExportWorkspace = async () => {
+    if (!(await requirePro())) return;
     const schema = await StorageService.get();
     await exportToPDF(schema, { workspaceID: activeWorkspaceID });
   };
 
   const handlePDFExportAll = async () => {
+    if (!(await requirePro())) return;
     const schema = await StorageService.get();
     await exportToPDF(schema);
   };
 
   // Moodboard export handlers
   const handleMoodboardExportWorkspace = async () => {
+    if (!(await requirePro())) return;
     const schema = await StorageService.get();
     const wsName = (schema.workspaces || []).find(w => w.id === activeWorkspaceID)?.name || 'workspace';
     const markdown = buildMoodboardExport(schema, { workspaceID: activeWorkspaceID });
@@ -143,23 +158,27 @@ export default function App() {
   };
 
   const handleMoodboardExportAll = async () => {
+    if (!(await requirePro())) return;
     const schema = await StorageService.get();
     const markdown = buildMoodboardExport(schema);
     downloadMoodboard(markdown, `tabyrinth-moodboard-all-${Date.now()}.md`);
   };
 
   const handleMoodboardPDFWorkspace = async () => {
+    if (!(await requirePro())) return;
     const schema = await StorageService.get();
     await exportMoodboardToPDF(schema, { workspaceID: activeWorkspaceID });
   };
 
   const handleMoodboardPDFAll = async () => {
+    if (!(await requirePro())) return;
     const schema = await StorageService.get();
     await exportMoodboardToPDF(schema);
   };
 
   // Visual Moodboard export handlers
   const handleVisualExportWorkspace = async (format: 'pdf' | 'image' | 'html') => {
+    if (!(await requirePro())) return;
     const schema = await StorageService.get();
     const wsName = (schema.workspaces || []).find(w => w.id === activeWorkspaceID)?.name || 'workspace';
     const units = getMoodboardUnits(activeWorkspaceID);
@@ -411,7 +430,7 @@ export default function App() {
       </div>
 
       {/* footer */}
-      <div className='shrink-0 bottom-3 left-3 right-3 grid grid-cols-7 gap-4 items-center justify-center bg-transparent'>
+      <div className={`shrink-0 bottom-3 left-3 right-3 grid ${isPro ? 'grid-cols-7' : 'grid-cols-6'} gap-4 items-center justify-center bg-transparent`}>
         {/* search bar */}
         <div className='rounded-full h-10 my-2 py-2 justify-center items-center grid grid-cols-4 col-span-4
         bg-[#21252b] shadow-[inset_9px_9px_18px_#121418,inset_-9px_-9px_18px_#30363e]'>
@@ -420,18 +439,20 @@ export default function App() {
         </div>
 
         {/* clear tree button */}
-        <button onClick={resetTree} className='flex h-10 rounded-2xl bg-black border-2 border-gray-700 hover:bg-gray-200 hover:text-black 
+        <button onClick={resetTree} className='flex h-10 rounded-2xl bg-black border-2 border-gray-700 hover:bg-gray-200 hover:text-black
         transition-all ease-in-out duration-300 justify-center items-center'>
           <ArrowClockwiseIcon size={20} />
         </button>
 
-        <button onClick={() => setIsStarterPaneOpen(true)} className='flex h-10 rounded-2xl bg-black border-2 border-gray-700 hover:bg-gray-200 hover:text-black 
-        transition-all ease-in-out duration-300 justify-center items-center' title="Hot Tabs">
-          <LightningIcon size={20} weight="fill" />
-        </button>
+        {isPro && (
+          <button onClick={() => setIsStarterPaneOpen(true)} className='flex h-10 rounded-2xl bg-black border-2 border-gray-700 hover:bg-gray-200 hover:text-black
+          transition-all ease-in-out duration-300 justify-center items-center' title="Hot Tabs">
+            <LightningIcon size={20} weight="fill" />
+          </button>
+        )}
 
         {/* settings button */}
-        <button onClick={handleOpenSettings} className='flex h-10 rounded-2xl bg-black border-2 border-gray-700 hover:bg-gray-200 hover:text-black 
+        <button onClick={handleOpenSettings} className='flex h-10 rounded-2xl bg-black border-2 border-gray-700 hover:bg-gray-200 hover:text-black
         transition-all ease-in-out duration-300 justify-center items-center'>
           <SlidersHorizontalIcon size={20} weight="fill" />
         </button>
@@ -439,7 +460,7 @@ export default function App() {
 
 
       {/* HOT TABS STARTER VIEW */}
-      {isStarterPaneOpen && (
+      {isPro && isStarterPaneOpen && (
         <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col p-4 overflow-y-auto">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold text-white">Hot Tabs</h2>
@@ -524,6 +545,8 @@ export default function App() {
             </button>
           </div>
 
+          {isPro && (
+            <>
           {/* export workspace -> MD and PDF */}
           <div className="bg-white/10 rounded-2xl p-4 flex flex-col gap-3 mb-2">
             <span className="font-bold text-sm text-white">Export Notes</span>
@@ -616,6 +639,8 @@ export default function App() {
               <span className="text-gray-500 text-[10px]">Export masonry layout</span>
             </div>
           </div>
+            </>
+          )}
 
 
           {statusMessage && (

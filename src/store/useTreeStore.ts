@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { StorageService } from '../services/storage';
+import { isProActive } from '../services/sync';
 import { type TabNode, type TreeStorageSchema, type Workspace, type TabGroup, type MoodboardItem, type MoodboardUnit, type HotTabSet } from '../types';
 
 export const CHAIN_FOLD_THRESHOLD = 4;
@@ -114,6 +115,10 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
     },
 
     launchHotTabSet: async (setId) => {
+        // Pro-only. The UI hides the launch button for guests, but callers
+        // that reach this action directly are still rejected.
+        if (!(await isProActive())) return;
+
         const hotTabSet = get().hotTabs[setId];
         if (!hotTabSet || hotTabSet.items.length === 0) return;
 
