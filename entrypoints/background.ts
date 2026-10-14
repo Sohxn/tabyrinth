@@ -50,10 +50,15 @@ function isSamePageNavigation(oldUrlStr: string, newUrlStr: string): boolean {
 
 async function bootExtension() {
   console.log("checking for license");
+
+  // Register listeners unconditionally — every callback self-gates on isProActive().
+  // This lets activation mid-session wake sync immediately instead of waiting
+  // for the MV3 service worker to restart.
+  setupSyncListeners();
+
   const isPro = await validatePersistedLicense();
   if (isPro) {
     await initializeSync();
-    setupSyncListeners();
     console.log("Pro activated, sync restored.");
   } else {
     console.log("No license found: Running guest mode.");

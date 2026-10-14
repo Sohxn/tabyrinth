@@ -35,11 +35,44 @@ async function recordStatus(state: string, detail?: string): Promise<void> {
     });
 }
 
+// Project a TabNode down to fields that are semantically meaningful for sync.
+// Volatile runtime state (isLoading) and per-device UI state are excluded so that
+// ordinary navigation doesn't churn the content hash and trigger redundant pushes.
+function stableNode(node: TabNode) {
+    return {
+        id: node.id,
+        title: node.title,
+        url: node.url,
+        parentID: node.parentID,
+        childrenIDs: node.childrenIDs,
+        workspaceID: node.workspaceID,
+        isClosed: node.isClosed,
+        isHistoryNode: node.isHistoryNode,
+        closedAt: node.closedAt,
+        favIconURL: node.favIconURL,
+        notes: node.notes,
+    };
+}
+
+function stableTreeString(state: TreeStorageSchema | undefined): string {
+    if (!state) return "";
+    const nodes: Record<string, ReturnType<typeof stableNode>> = {};
+    for (const [id, node] of Object.entries(state.nodes ?? {})) {
+        nodes[id] = stableNode(node);
+    }
+    return JSON.stringify({
+        workspaces: state.workspaces,
+        activeWorkspaceID: state.activeWorkspaceID,
+        nodes,
+        rootIDs: state.rootIDs,
+        groups: state.groups,
+        moodboardItems: state.moodboardItems,
+        hotTabs: state.hotTabs,
+    });
+}
+
 async function contentHash(state: TreeStorageSchema): Promise<string> {
-    const { workspaces, nodes, rootIDs, groups, moodboardItems, hotTabs } = state;
-    const bytes = new TextEncoder().encode(
-        JSON.stringify({ workspaces, nodes, rootIDs, groups, moodboardItems, hotTabs })
-    );
+    const bytes = new TextEncoder().encode(stableTreeString(state));
     const digest = await crypto.subtle.digest("SHA-256", bytes);
     return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
 }
@@ -263,6 +296,11 @@ async function pushIfChanged(allowRetry = true): Promise<void> {
 async function reconcile(): Promise<void> {
     if (!(await isProActive())) return;
 
+    // Push local changes first. If pull then fails (429, transient network, auth),
+    // local work has already been flushed and can't be silently dropped.
+    // pushIfChanged internally handles the 409 pull-merge-push recovery cycle.
+    await pushIfChanged();
+
     const pulled = await pull();
     if (pulled.status !== "ok") {
         if (pulled.status !== "auth") await recordStatus(pulled.status, "pull");
@@ -272,8 +310,10 @@ async function reconcile(): Promise<void> {
     const { lastSyncedAt = 0 } = await StorageService.get();
     if (pulled.data && pulled.data.updatedAt > lastSyncedAt) {
         await applyRemote(pulled.data);
+        // Merging remote data may have produced a state the server hasn't seen yet
+        // (e.g. remote had moodboard item X, local had Y, merge is X+Y). Flush it back.
+        await pushIfChanged();
     }
-    await pushIfChanged();
 }
 
 export function initializeSync(): Promise<void> {
@@ -316,15 +356,10 @@ export function setupSyncListeners(): void {
 
         const oldData = treeChange.oldValue as TreeStorageSchema | undefined;
         const newData = treeChange.newValue as TreeStorageSchema | undefined;
-        const differs = (a: unknown, b: unknown) => JSON.stringify(a) !== JSON.stringify(b);
 
-        // Filter out noisy updates (active tab, media tab, loading state)
-        const hasChanged =
-            differs(oldData?.workspaces, newData?.workspaces) ||
-            differs(oldData?.nodes, newData?.nodes) ||
-            differs(oldData?.rootIDs, newData?.rootIDs) ||
-            differs(oldData?.moodboardItems, newData?.moodboardItems) ||
-            differs(oldData?.hotTabs, newData?.hotTabs);
+        // Compare only the semantic projection so loading flags and other
+        // per-device runtime state don't trigger redundant pushes.
+        const hasChanged = stableTreeString(oldData) !== stableTreeString(newData);
 
         if (hasChanged) {
             void isProActive().then((pro) => { if (pro) triggerDebouncedPush(); });
