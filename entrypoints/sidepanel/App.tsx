@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTreeStore } from '../../src/store/useTreeStore';
 import { TreeNode } from './TreeNode';
-import { type TreeStorageSchema } from '@/src/types';
+import { REMOTE_WORKSPACE_ID, type TreeStorageSchema } from '@/src/types';
 import { StorageService } from '@/src/services/storage';
 import { MediaCard } from './MediaCard';
 import { WorkspaceNotch } from './WorkspaceNotch';
@@ -21,6 +21,7 @@ import {
 // only for sync 
 import { createCheckoutSession, activateLicenseKey, isProActive } from '@/src/services/sync';
 import { GhostGroup } from './GhostGroup';
+import { CloudGroup } from './CloudGroup';
 
 
 export default function App() {
@@ -43,6 +44,14 @@ export default function App() {
   // workspace related 
   const regularRootIDs = getRegularRootIDs(activeWorkspaceID);
   const ghostGroup = getGhostGroup(activeWorkspaceID);
+  const cloudHasItems = useTreeStore((s) =>
+    Object.values(s.nodes).some(
+      (node) => node.isRemote && (
+        activeWorkspaceID === REMOTE_WORKSPACE_ID ||
+        (node.workspaceID || 'workspace-default') === activeWorkspaceID
+      )
+    )
+  );
 
   // manual and automatic moodboard toggle
   const [isMoodboardToggled, setIsMoodboardToggled] = useState(false);
@@ -388,7 +397,7 @@ export default function App() {
 
         {/* Scrollable list area */}
         <div ref={treeContainerRef} className={`flex-1 mt-3 overflow-y-auto no-scrollbar ${isMoodboardActive ? 'h-1/2' : ''}`}>
-          {!regularRootIDs || regularRootIDs.length === 0 ? (
+          {!regularRootIDs || (regularRootIDs.length === 0 && !cloudHasItems) ? (
             <div className="flex flex-col items-center justify-center m-2">
               <p className="text-gray-400 font-bold text-lg text-center">No active tabs in this workspace</p>
             </div>
@@ -410,6 +419,8 @@ export default function App() {
               })}
             </div>
           )}
+
+          <CloudGroup workspaceID={activeWorkspaceID} isResettingGhosts={isResettingGhosts} />
 
           {ghostGroup && <GhostGroup group={ghostGroup} isResettingGhosts={isResettingGhosts} />}
 

@@ -358,6 +358,8 @@ export const StorageService = {
         ...oldNode,
         id: newID,
         isClosed: false,
+        isRemote: false,
+        remoteAddedAt: undefined,
         windowID: newTab.windowId,
         favIconURL: newTab.favIconUrl || oldNode.favIconURL,
         title: newTab.title || oldNode.title
@@ -404,6 +406,47 @@ export const StorageService = {
           groups,
           lastActiveTabID: newID
         }
+      });
+    });
+  },
+
+  // Removes remote nodes older than the given age. Called once per boot.
+  async sweepStaleRemoteNodes(maxAgeMs: number): Promise<void> {
+    return enqueue(async () => {
+      const data = await chrome.storage.local.get("tabTreeData");
+      const state = (data.tabTreeData as TreeStorageSchema) || InitState;
+      const now = Date.now();
+
+      const stale = Object.entries(state.nodes)
+        .filter(([, node]) => {
+          if (!node.isRemote) return false;
+          const addedAt = node.remoteAddedAt ?? 0;
+          return addedAt > 0 && now - addedAt > maxAgeMs;
+        })
+        .map(([id]) => id);
+
+      if (stale.length === 0) return;
+
+      const staleIDs = new Set(stale);
+      const updatedNodes: Record<string | number, TabNode> = {};
+      Object.entries(state.nodes).forEach(([id, node]) => {
+        if (staleIDs.has(id)) return;
+        updatedNodes[id] = {
+          ...node,
+          childrenIDs: node.childrenIDs.filter((childID) => !staleIDs.has(String(childID))),
+        };
+      });
+
+      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots, groups } =
+        sanitizeTree(updatedNodes);
+
+      await chrome.storage.local.set({
+        tabTreeData: {
+          ...state,
+          nodes: sanitizedNodes,
+          rootIDs: sanitizedRoots,
+          groups,
+        },
       });
     });
   },

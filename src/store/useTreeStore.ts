@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { StorageService } from '../services/storage';
 import { isProActive } from '../services/sync';
-import { type TabNode, type TreeStorageSchema, type Workspace, type TabGroup, type MoodboardItem, type MoodboardUnit, type HotTabSet } from '../types';
+import { REMOTE_WORKSPACE_ID, type TabNode, type TreeStorageSchema, type Workspace, type TabGroup, type MoodboardItem, type MoodboardUnit, type HotTabSet } from '../types';
 
 export const CHAIN_FOLD_THRESHOLD = 4;
 
@@ -70,6 +70,10 @@ interface TreeStoreState {
     assignTabToWorkspace: (nodeID: string, workspaceID: string) => void;
     getTabsByWorkspace: (workspaceID: string) => (string | number)[];
     setActiveWorkspace: (workspaceID: string) => Promise<void>;
+    getCloudNodes: (workspaceID: string) => (string | number)[];
+    getAllRemoteNodes: () => (string | number)[];
+    launchAllCloud: (workspaceID: string) => Promise<void>;
+    dismissRemote: (nodeID: string | number) => Promise<void>;
 
     //grouping
     getRegularRootIDs: (WorkspaceID: string) => (string | number)[];
@@ -311,13 +315,51 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
         });
     },
 
+    getCloudNodes: (workspaceID) => {
+        const { rootIDs, nodes } = get();
+        return rootIDs.filter((id) => {
+            const node = nodes[id];
+            if (!node || !node.isRemote) return false;
+            const wsID = node.workspaceID || DEFAULT_WORKSPACE.id;
+            return wsID === workspaceID;
+        });
+    },
+
+    getAllRemoteNodes: () => {
+        const { nodes } = get();
+        return Object.values(nodes)
+            .filter((node) => node.isRemote)
+            .map((node) => node.id);
+    },
+
+    launchAllCloud: async (workspaceID) => {
+        if (!(await isProActive())) return;
+        const ids = get().getCloudNodes(workspaceID);
+        for (const id of ids) {
+            try {
+                await StorageService.reopenNode(id);
+            } catch (err) {
+                console.error("[LOG] Failed to launch cloud node:", id, err);
+            }
+        }
+    },
+
+    dismissRemote: async (nodeID) => {
+        await StorageService.deleteNode(nodeID);
+    },
+
     getRegularRootIDs: (workspaceID: string) => {
+        if (workspaceID === REMOTE_WORKSPACE_ID) {
+            return get().getAllRemoteNodes();
+        }
+
         const { rootIDs, nodes, groups } = get();
         const ghostGroup = groups[`ghost_${workspaceID}`];
         const ghostRootIDs = new Set(ghostGroup?.nodeIDs ?? []);
         return rootIDs.filter((id) => {
             const node = nodes[id];
             if (!node) return false;
+            if (node.isRemote) return false;
             const wsID = node.workspaceID || DEFAULT_WORKSPACE.id;
             if (wsID !== workspaceID) return false;
             return !ghostRootIDs.has(id);

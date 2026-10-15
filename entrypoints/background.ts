@@ -6,6 +6,8 @@ import { validatePersistedLicense, initializeSync, setupSyncListeners } from "@/
 import { smartTextToHTML } from '@/src/utils/noteText'
 import { sanitizeHTML } from "@/src/utils/sanitizeHTML";
 
+const REMOTE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
 const RESOURCE_ID_KEYS = new Set([
   'v', 'id', 'item', 'doc', 'article', 'page_id'
 ]);
@@ -50,6 +52,12 @@ function isSamePageNavigation(oldUrlStr: string, newUrlStr: string): boolean {
 
 async function bootExtension() {
   console.log("checking for license");
+
+  try {
+    await StorageService.sweepStaleRemoteNodes(REMOTE_TTL_MS);
+  } catch (err) {
+    console.warn("[CLOUD] Stale sweep failed:", err);
+  }
 
   // Register listeners unconditionally — every callback self-gates on isProActive().
   // This lets activation mid-session wake sync immediately instead of waiting

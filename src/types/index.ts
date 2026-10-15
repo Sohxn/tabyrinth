@@ -25,7 +25,17 @@ export interface TabNode {
     notes?: TabNote[];
     // grouping
     workspaceID: string;
+
+    // Marks a node that arrived via sync and is displayed in the Cloud section
+    // until the user launches it. Purely local UI state — never synced.
+    isRemote?: boolean;
+
+    // When the node was first received as remote. Used for the 7-day TTL sweep.
+    // Purely local UI state — never synced.
+    remoteAddedAt?: number;
 }
+
+export const REMOTE_WORKSPACE_ID = 'workspace-remote';
 
 // for per tab notes
 export interface TabNote {

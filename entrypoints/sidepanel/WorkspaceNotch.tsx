@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useTreeStore } from "@/src/store/useTreeStore";
-import { type Workspace } from "@/src/types";
+import { REMOTE_WORKSPACE_ID, type Workspace } from "@/src/types";
 import { WScolors } from "@/src/colors/colors";
 import { PlusIcon, PencilSimpleIcon } from "@phosphor-icons/react";
 
@@ -14,6 +14,8 @@ export function WorkspaceNotch() {
     const assignTab2workspace = useTreeStore((state) => state.assignTabToWorkspace);
     const getTabsByWorkspace = useTreeStore((state) => state.getTabsByWorkspace);
     const setActiveWorkspace = useTreeStore((state) => state.setActiveWorkspace);
+    const hasRemote = useTreeStore((state) => Object.values(state.nodes).some((node) => node.isRemote));
+    const getAllRemoteNodes = useTreeStore((state) => state.getAllRemoteNodes);
 
     const [isExpanded, setIsExpanded] = useState(false);
     const [showCreateForm, setShowCreateForm] = useState(false);
@@ -22,7 +24,10 @@ export function WorkspaceNotch() {
     const [editingID, setEditingID] = useState<string | null>(null);
     const [editValue, setEditValue] = useState('');
 
-    const activeWorkspace = workspaces.find((w) => w.id === activeWorkspaceID) || workspaces[0];
+    const isRemoteView = activeWorkspaceID === REMOTE_WORKSPACE_ID;
+    const activeWorkspace = isRemoteView
+        ? { id: REMOTE_WORKSPACE_ID, name: 'Remote' } as Workspace
+        : workspaces.find((w) => w.id === activeWorkspaceID) || workspaces[0];
     const activeWSIndex = activeWorkspace ? workspaces.indexOf(activeWorkspace) : 0;
 
     const handleSelectWorkspace = (id: string) => {
@@ -84,6 +89,7 @@ export function WorkspaceNotch() {
 
     const getWorkspaceColor = (workspace?: Workspace, idx: number = 0) => {
         if (!workspace) return '#FF6314';
+        if (workspace.id === REMOTE_WORKSPACE_ID) return '#5b9bd5';
         if (workspace.color) return workspace.color;
         if (workspace.isDefault) return '#FF6314';
         return WScolors[idx % WScolors.length];
@@ -115,7 +121,9 @@ export function WorkspaceNotch() {
 
                 <div className="flex items-center gap-1.5 shrink-0">
                     <span className="text-[10px] bg-white/10 px-2.5 py-1 rounded-xl text-gray-400 font-mono">
-                        {getTabsByWorkspace(activeWorkspace?.id ?? '').length}
+                        {isRemoteView
+                            ? getAllRemoteNodes().length
+                            : getTabsByWorkspace(activeWorkspace?.id ?? '').length}
                     </span>
                     <span className="text-[10px] text-gray-500 group-hover:text-orange-400 transition-colors">
                         ▾
@@ -171,6 +179,33 @@ export function WorkspaceNotch() {
 
                         {/* drop zone */}
                         <div className="flex flex-col gap-2 max-h-64 overflow-y-auto no-scrollbar">
+                            {hasRemote && (
+                                <div
+                                    onClick={() => handleSelectWorkspace(REMOTE_WORKSPACE_ID)}
+                                    className={`flex items-center justify-between p-3 rounded-2xl border transition-all cursor-pointer group
+                                        ${activeWorkspaceID === REMOTE_WORKSPACE_ID
+                                            ? 'bg-white/10 border-blue-400/60 shadow-md'
+                                            : 'bg-black/30 border-white/5 hover:border-white/20 hover:bg-white/5'}`}>
+                                    <div className="flex items-center gap-3 truncate flex-1 min-w-0">
+                                        <svg
+                                            className="w-4 h-4 shrink-0"
+                                            fill="currentColor"
+                                            style={{ color: '#5b9bd5' }}
+                                            viewBox="0 0 20 20">
+                                            <path d="M5.5 16a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 16h-8z" />
+                                        </svg>
+                                        <span className="text-xs font-semibold text-gray-200 truncate">
+                                            Remote
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-gray-400 font-mono">
+                                            {getAllRemoteNodes().length}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
                             {workspaces.map((ws, idx) => {
                                 const isActive = ws.id === activeWorkspaceID;
                                 const wsTabs = getTabsByWorkspace(ws.id);

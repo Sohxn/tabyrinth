@@ -1,6 +1,7 @@
 import React, { useState, type SyntheticEvent, useRef, useEffect } from 'react';
 import { useTreeStore } from '../../src/store/useTreeStore';
 import { StorageService } from '@/src/services/storage';
+import { isProActive } from '@/src/services/sync';
 import { createPortal } from 'react-dom';
 import { sanitizeHTML } from '@/src/utils/sanitizeHTML';
 import { type TabNode } from '@/src/types';
@@ -98,6 +99,8 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false, isChainCont
   const handleTabClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
     const target = isFoldedChain ? displayNode : node;
+
+    if (target.isRemote && !(await isProActive())) return;
 
     if (target.isClosed) {
       await chrome.runtime.sendMessage({ type: 'reopen-node', nodeID: target.id });

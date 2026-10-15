@@ -38,9 +38,7 @@ async function recordStatus(state: string, detail?: string): Promise<void> {
     });
 }
 
-// Project a TabNode down to fields that are semantically meaningful for sync.
-// Volatile runtime state (isLoading) and per-device UI state are excluded so that
-// ordinary navigation doesn't churn the content hash and trigger redundant pushes.
+
 function stableNode(node: TabNode) {
     return {
         id: node.id,
@@ -220,17 +218,55 @@ async function applyRemote(remote: SyncPayload): Promise<void> {
 
     await StorageService.transaction((state) => {
         const incoming: Record<string | number, TabNode> = {};
+        const localUrls = new Set(
+            Object.values(state.nodes)
+                .map((n) => n.url)
+                .filter(Boolean)
+        );
+
         for (const [id, node] of Object.entries(remote.nodes)) {
+            // 1. Never touch nodes representing live tabs on this device.
             if (liveIDs.has(String(id))) continue;
+
+            const existing = state.nodes[id];
+
+            // 2. If the node exists locally, its state is authoritative here.
+            //    The one exception: if the source closed it, honour that by
+            //    moving it out of Cloud into the Closed section.
+            if (existing) {
+                if (node.isClosed && !existing.isClosed) {
+                    incoming[id] = {
+                        ...existing,
+                        isClosed: true,
+                        closedAt: node.closedAt ?? Date.now(),
+                        isRemote: false,
+                        isLoading: false,
+                    };
+                }
+                continue;
+            }
+
+            // 3. New closed nodes are not interesting — they belong to the
+            //    source device's Closed section, not our Cloud.
+            if (node.isClosed) continue;
+
+            // 4. URL dedup. If we already have this page locally (live, closed,
+            //    or remote), skip. Prevents round-trip duplicates when the user
+            //    launches Cloud items and the source pulls them back.
+            if (node.url && localUrls.has(node.url)) continue;
+
+            // 5. Insert as a Cloud item.
             incoming[id] = {
                 ...node,
-                // Preserve the remote node's own closed/open state. A node that
-                // was open on the remote device (e.g. the remote session ended
-                // cleanly) should not be demoted to "closed" here just because
-                // we don't have a live tab for it.
-                windowID: node.windowID ?? chrome.windows.WINDOW_ID_NONE,
+                isRemote: true,
+                remoteAddedAt: Date.now(),
                 isLoading: false,
             };
+        }
+
+        const hasChanges = Object.keys(incoming).length > 0;
+        if (!hasChanges) {
+            return { lastSyncedAt: remote.updatedAt };
         }
 
         return {
