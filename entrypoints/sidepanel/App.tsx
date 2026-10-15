@@ -315,9 +315,13 @@ export default function App() {
     setLoading(true);
     setStatusMessage(null);
     try {
-      const paymentUrl = await createCheckoutSession(activationMail);
+      const { paymentUrl, provider } = await createCheckoutSession(activationMail);
       chrome.tabs.create({ url: paymentUrl });
-      setStatusMessage({ text: 'Checkout page opened! Complete payment to receive your key via email.', isError: false });
+      setStatusMessage({
+        text: 'Checkout opened. Complete payment to receive your key by email.',
+        isError: false,
+      });
+      console.log("[PURCHASE] provider:", provider);
     } catch (err: any) {
       setStatusMessage({ text: err.message || 'Failed to create payment link.', isError: true });
     } finally {

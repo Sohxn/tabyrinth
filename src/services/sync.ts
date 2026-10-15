@@ -127,7 +127,9 @@ export async function activateLicenseKey(rawKey: string): Promise<{ success: boo
     }
 }
 
-export async function createCheckoutSession(email: string): Promise<string> {
+export async function createCheckoutSession(
+    email: string
+): Promise<{ paymentUrl: string; provider: string }> {
     const result = await fetch(`${WURL}/api/create-payment-link`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -138,7 +140,10 @@ export async function createCheckoutSession(email: string): Promise<string> {
     if (!result.ok) {
         throw new Error(data.error || "Failed to initiate payment");
     }
-    return data.paymentUrl;
+    return {
+        paymentUrl: data.paymentUrl,
+        provider: data.provider || "unknown",
+    };
 }
 
 async function call(method: "GET" | "POST", body?: SyncPayload): Promise<Response | null> {
