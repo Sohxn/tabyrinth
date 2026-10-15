@@ -9,6 +9,7 @@ import { buildMarkdownExport, downloadMarkdown } from '@/src/utils/exportNotes';
 import { buildMoodboardExport, downloadMoodboard } from '@/src/utils/exportMoodboard';
 import { exportToPDF, exportMoodboardToPDF, exportVisualMoodboardToPDF } from '@/src/utils/exportPDF';
 import { downloadVisualMoodboardAsHtml } from '@/src/utils/exportVisualMoodboard';
+import { buildTrailExport, downloadTrail } from '@/src/utils/exportTrail';
 import { Board } from '../board/Board';
 
 // icon packs
@@ -200,6 +201,22 @@ export default function App() {
     } else {
       await downloadVisualMoodboardAsHtml(units, `${filename}.html`);
     }
+  };
+
+  // Research trail export handlers
+  const handleTrailExportWorkspace = async () => {
+    if (!(await requirePro())) return;
+    const schema = await StorageService.get();
+    const wsName = (schema.workspaces || []).find(w => w.id === activeWorkspaceID)?.name || 'workspace';
+    const markdown = buildTrailExport(schema, { workspaceID: activeWorkspaceID });
+    downloadTrail(markdown, `tabyrinth-trail-${wsName.replace(/\s+/g, '-')}-${Date.now()}.md`);
+  };
+
+  const handleTrailExportAll = async () => {
+    if (!(await requirePro())) return;
+    const schema = await StorageService.get();
+    const markdown = buildTrailExport(schema);
+    downloadTrail(markdown, `tabyrinth-trail-all-${Date.now()}.md`);
   };
 
   // client side license key visibility
@@ -663,6 +680,25 @@ export default function App() {
               className="bg-[#FF6314] hover:bg-[#ff742d] text-white font-bold py-2 rounded-xl text-xs transition-colors">
               Open citation panel
             </button>
+          </div>
+
+          <div className="bg-white/10 rounded-2xl p-4 flex flex-col gap-3 mb-2">
+            <span className="font-bold text-sm text-white">Export Research Trail</span>
+            <span className="text-gray-300 text-[13px]">
+              Save the full nested tab tree as Markdown — a trace of how this session unfolded.
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={handleTrailExportWorkspace}
+                className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                This workspace
+              </button>
+              <button
+                onClick={handleTrailExportAll}
+                className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                All workspaces
+              </button>
+            </div>
           </div>
             </>
           )}
