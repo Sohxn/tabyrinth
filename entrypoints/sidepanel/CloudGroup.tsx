@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTreeStore } from '@/src/store/useTreeStore';
 import { TreeNode } from './TreeNode';
 
@@ -9,34 +9,50 @@ interface CloudGroupProps {
 
 export function CloudGroup({ workspaceID, isResettingGhosts }: CloudGroupProps) {
     const [isExpanded, setIsExpanded] = useState(false);
-    const cloudNodes = useTreeStore((state) => state.getCloudNodes(workspaceID));
+    const nodes = useTreeStore((state) => state.nodes);
+    const rootIDs = useTreeStore((state) => state.rootIDs);
     const launchAllCloud = useTreeStore((state) => state.launchAllCloud);
+
+    // Compute outside the selector so we return a stable array between renders.
+    const cloudNodes = useMemo(
+        () =>
+            rootIDs.filter((id) => {
+                const node = nodes[id];
+                return (
+                    node &&
+                    node.isRemote &&
+                    (node.workspaceID || 'workspace-default') === workspaceID
+                );
+            }),
+        [rootIDs, nodes, workspaceID]
+    );
 
     if (cloudNodes.length === 0) return null;
 
     return (
-        <div className="flex flex-col mt-3">
-            <div className="flex items-center gap-1 w-fit">
+        <div className="flex flex-col mt-4">
+            <div className="flex items-center gap-3 w-fit">
                 <button
                     onClick={() => setIsExpanded((prev) => !prev)}
-                    className="flex items-center gap-2 px-3 h-8 rounded-full bg-[#2a3a52] text-white/90 hover:text-white hover:bg-[#334a68] transition-colors cursor-pointer"
-                >
-                    <span className={`text-[9px] transition-transform duration-150 inline-block ${isExpanded ? 'rotate-90' : ''}`}>▶</span>
-                    <span className="text-[12px] font-bold uppercase tracking-wide">Cloud</span>
+                    className="flex items-center gap-2 px-3 h-8 rounded-full bg-cyan-900 
+                    text-white/90 hover:text-white hover:bg-[#334a68] transition-colors cursor-pointer">
+                    <span className={`text-[9px] transition-transform duration-150 inline-block 
+                        ${isExpanded ? 'rotate-90' : ''}`}>▶</span>
+                    <span className="text-[12px] font-bold uppercase tracking-wide">Cloud Sessions</span>
                     <span className="text-[10px] bg-white/10 px-1.5 py-0.5 rounded-full font-mono">{cloudNodes.length}</span>
                 </button>
 
                 <button
                     onClick={() => void launchAllCloud(workspaceID)}
                     title="Launch all cloud tabs"
-                    className="h-8 px-2 rounded-full bg-[#FF6314] hover:bg-[#ff742d] text-white text-[11px] font-bold transition-colors"
-                >
+                    className="h-8 px-2 rounded-full border-2 border-[#FF6314] hover:bg-[#ff742d] 
+                    hover:text-white text-orange-400 text-[11px] font-bold transition-colors">
                     Launch all
                 </button>
             </div>
 
             {isExpanded && (
-                <div className="flex flex-col gap-1 mt-1">
+                <div className="flex flex-col gap-1 mt-2">
                     {cloudNodes.map((nodeID) => (
                         <TreeNode
                             key={nodeID}

@@ -2,9 +2,11 @@ import { defineBackground } from "#imports";
 import { StorageService } from "@/src/services/storage";
 import { type TabNode } from "@/src/types";
 import { getAccentColorFromURL } from "@/src/utils/mediaColors";
-import { validatePersistedLicense, initializeSync, setupSyncListeners } from "@/src/services/sync";
+import { validatePersistedLicense, initializeSync, setupSyncListeners, isProActive } from "@/src/services/sync";
 import { smartTextToHTML } from '@/src/utils/noteText'
 import { sanitizeHTML } from "@/src/utils/sanitizeHTML";
+import { captureSourceInPage } from "@/src/utils/citationCapture";
+import { generateCiteKey } from "@/src/utils/citeKey";
 
 const REMOTE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -154,6 +156,12 @@ export default defineBackground(() => {
       title: "Pin selection to board",
       contexts: ["selection"]
     });
+
+    chrome.contextMenus.create({
+      id: "capture-citation",
+      title: "Capture citation metadata",
+      contexts: ["page"]
+    });
   });
 
   chrome.runtime.onStartup.addListener(async () => {
@@ -241,6 +249,34 @@ export default defineBackground(() => {
         }
       } catch (err) {
         console.error("[ERROR] Failed to add selection to board: ", err);
+      }
+    }
+
+    if (info.menuItemId === "capture-citation" && tab?.id) {
+      if (!(await isProActive())) return;
+      try {
+        const injectionResults = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: captureSourceInPage,
+        });
+        const raw = injectionResults[0]?.result;
+        if (!raw) return;
+
+        const state = await StorageService.get();
+        const existingKeys = new Set<string>();
+        Object.values(state.nodes).forEach((node) => {
+          if (node.source?.citeKey) existingKeys.add(node.source.citeKey);
+        });
+
+        const source = {
+          ...raw,
+          citeKey: generateCiteKey(raw, existingKeys),
+          userEdited: [] as string[],
+        };
+        await StorageService.updateNodeSource(tab.id, source);
+        console.log("[CITATION] Captured metadata for tab", tab.id, "key:", source.citeKey);
+      } catch (error) {
+        console.error("[CITATION] Capture failed:", error);
       }
     }
   });

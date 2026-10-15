@@ -23,6 +23,7 @@ export interface TabNode {
     closedAt?: number;
     // util
     notes?: TabNote[];
+    source?: Source;
     // grouping
     workspaceID: string;
 
@@ -43,6 +44,38 @@ export interface TabNote {
     content: string;
     createdAt: number;
     sourceURL?: string;
+}
+
+export type SourceType =
+    | 'article'
+    | 'conference'
+    | 'thesis'
+    | 'report'
+    | 'book'
+    | 'preprint'
+    | 'webpage';
+
+export interface Source {
+    type: SourceType;
+    title: string;
+    authors: string[];
+    year: string;
+    month: string;
+    journal: string;
+    conference: string;
+    address: string;
+    publisher: string;
+    institution: string;
+    volume: string;
+    issue: string;
+    pages: string;
+    doi: string;
+    arxiv: string;
+    site: string;
+    url: string;
+    accessed: string;
+    citeKey: string;
+    userEdited: string[];
 }
 
 // moodboarding / planning

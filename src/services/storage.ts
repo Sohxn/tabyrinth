@@ -1,4 +1,4 @@
-import { type TreeStorageSchema, type TabNode, type TabNote, type TabGroup, type MoodboardItem, type HotTabSet } from "../types";
+import { type TreeStorageSchema, type TabNode, type TabNote, type TabGroup, type MoodboardItem, type HotTabSet, type Source } from "../types";
 
 const InitState: TreeStorageSchema = {
   nodes: {},
@@ -202,6 +202,25 @@ export const StorageService = {
           rootIDs: sanitizedRoots,
           groups
         },
+      });
+    });
+  },
+
+  async updateNodeSource(tabID: string | number, source: Source): Promise<void> {
+    return enqueue(async () => {
+      const data = await chrome.storage.local.get("tabTreeData");
+      const state = (data.tabTreeData as TreeStorageSchema) || InitState;
+      const target = state.nodes[tabID];
+      if (!target) return;
+
+      const updatedNodes = {
+        ...state.nodes,
+        [tabID]: { ...target, source },
+      };
+      const { nodes: sanitizedNodes, rootIDs: sanitizedRoots, groups } = sanitizeTree(updatedNodes);
+
+      await chrome.storage.local.set({
+        tabTreeData: { ...state, nodes: sanitizedNodes, rootIDs: sanitizedRoots, groups },
       });
     });
   },

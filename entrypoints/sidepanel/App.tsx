@@ -22,6 +22,7 @@ import {
 import { createCheckoutSession, activateLicenseKey, isProActive } from '@/src/services/sync';
 import { GhostGroup } from './GhostGroup';
 import { CloudGroup } from './CloudGroup';
+import { CitationExportPanel } from './CitationExportPanel';
 
 
 export default function App() {
@@ -33,6 +34,7 @@ export default function App() {
   // settings related
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isStarterPaneOpen, setIsStarterPaneOpen] = useState(false);
+  const [isCitationPanelOpen, setIsCitationPanelOpen] = useState(false);
   const [isPro, setIsPro] = useState(false);
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [activationMail, setActivationMail] = useState('');
@@ -341,7 +343,7 @@ export default function App() {
             <div key={i} className="w-4 h-3 rounded-xs bg-orange-500" />
           )
         )}
-      </div>
+      </div >
     );
   };
 
@@ -650,6 +652,18 @@ export default function App() {
               <span className="text-gray-500 text-[10px]">Export masonry layout</span>
             </div>
           </div>
+
+          <div className="bg-white/10 rounded-2xl p-4 flex flex-col gap-3 mb-2">
+            <span className="font-bold text-sm text-white">Export Citations</span>
+            <span className="text-gray-300 text-[13px]">
+              Turn tabs into APA, IEEE, or BibTeX references.
+            </span>
+            <button
+              onClick={() => setIsCitationPanelOpen(true)}
+              className="bg-[#FF6314] hover:bg-[#ff742d] text-white font-bold py-2 rounded-xl text-xs transition-colors">
+              Open citation panel
+            </button>
+          </div>
             </>
           )}
 
@@ -671,7 +685,7 @@ export default function App() {
                   ) : (
                     <MaskedKey value={activeKey} />
                   )}
-                </div>
+                </div >
 
                 <button onClick={() => setIsKeyVisible(v => !v)} className="flex w-8 h-8 justify-end items-center shrink-0">
                   {isKeyVisible ? <div className='bg-white/10 p-2 rounded-xl text-orange-500 hover:bg-white/20'><EyeClosedIcon size={16} weight='bold' /></div> :
@@ -732,6 +746,9 @@ export default function App() {
         </div>
       )
       }
+      {isPro && isCitationPanelOpen && (
+        <CitationExportPanel onClose={() => setIsCitationPanelOpen(false)} />
+      )}
 
     </div >
   );
