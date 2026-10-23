@@ -26,7 +26,7 @@ export function WorkspaceNotch() {
 
     const isRemoteView = activeWorkspaceID === REMOTE_WORKSPACE_ID;
     const activeWorkspace = isRemoteView
-        ? { id: REMOTE_WORKSPACE_ID, name: 'Remote' } as Workspace
+        ? { id: REMOTE_WORKSPACE_ID, name: 'Cloud' } as Workspace
         : workspaces.find((w) => w.id === activeWorkspaceID) || workspaces[0];
     const activeWSIndex = activeWorkspace ? workspaces.indexOf(activeWorkspace) : 0;
 
@@ -195,7 +195,7 @@ export function WorkspaceNotch() {
                                             <path d="M5.5 16a3.5 3.5 0 01-.369-6.98 4 4 0 117.753-1.977A4.5 4.5 0 1113.5 16h-8z" />
                                         </svg>
                                         <span className="text-xs font-semibold text-gray-200 truncate">
-                                            Remote
+                                            Cloud
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2 shrink-0">

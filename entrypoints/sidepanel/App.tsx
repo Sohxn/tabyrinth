@@ -373,12 +373,13 @@ export default function App() {
 
       {/* header */}
       <div className="flex items-center justify-between gap-2 px-2 h-16 min-w-0">
-        {isPro ?
-          <div className="font-logo text-sm text-gray-200 shrink-0"></div> :
-          <div className="font-logo text-lg text-gray-200 shrink-0">Tabyrinth</div>}
+        {!isPro &&
+          <div className="font-logo text-lg text-gray-200 shrink-0">Tabyrinth</div>
+        }
+
         {isPro && (
-          <span className="text-2xl text-[#FF6314] ml-4 mb-1 font-bold tracking-wider shrink-0">
-            plus
+          <span className="text-2xl text-[#FF6314] mx-3 mb-1 font-bold tracking-wider shrink-0">
+            Plus
           </span>
         )}
 
@@ -581,129 +582,129 @@ export default function App() {
 
           {isPro && (
             <>
-          {/* export workspace -> MD and PDF */}
-          <div className="bg-white/10 rounded-2xl p-4 flex flex-col gap-3 mb-2">
-            <span className="font-bold text-sm text-white">Export Notes</span>
-            {/* separation */}
-            <div className='flex flex-col gap-1.5'>
-              <span className="text-gray-300 text-[13px]">Save your tab notes to Markdown</span>
-              <div className="flex gap-2">
+              {/* export workspace -> MD and PDF */}
+              <div className="bg-white/10 rounded-2xl p-4 flex flex-col gap-3 mb-2">
+                <span className="font-bold text-sm text-white">Export Notes</span>
+                {/* separation */}
+                <div className='flex flex-col gap-1.5'>
+                  <span className="text-gray-300 text-[13px]">Save your tab notes to Markdown</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleMarkdownExportWorkspace}
+                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                      This workspace
+                    </button>
+                    <button
+                      onClick={handleMarkdownExportAll}
+                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                      All workspaces
+                    </button>
+                  </div>
+                </div>
+
+                <div className='flex flex-col gap-1.6'>
+                  <span className="text-gray-400 text-[11px] uppercase tracking-wide">PDF</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handlePDFExportWorkspace}
+                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                      This workspace
+                    </button>
+                    <button
+                      onClick={handlePDFExportAll}
+                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                      All workspaces
+                    </button>
+                  </div>
+                  <span className="text-gray-500 text-[10px]">Save notes to PDF</span>
+                </div>
+              </div>
+
+              {/* export moodboard -> MD and PDF */}
+              <div className="bg-white/10 rounded-2xl p-4 flex flex-col gap-3 mb-2">
+                <span className="font-bold text-sm text-white">Export Moodboard</span>
+
+                <div className='flex flex-col gap-1.5'>
+                  <span className="text-gray-300 text-[13px]">Save moodboard items to Markdown</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleMoodboardExportWorkspace}
+                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                      This workspace
+                    </button>
+                    <button
+                      onClick={handleMoodboardExportAll}
+                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                      All workspaces
+                    </button>
+                  </div>
+                </div>
+
+                <div className='flex flex-col gap-1.6'>
+                  <span className="text-gray-400 text-[11px] uppercase tracking-wide">PDF</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleMoodboardPDFWorkspace}
+                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                      This workspace
+                    </button>
+                    <button
+                      onClick={handleMoodboardPDFAll}
+                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                      All workspaces
+                    </button>
+                  </div>
+                  <span className="text-gray-500 text-[10px]">Save moodboard to PDF</span>
+                </div>
+
+                <div className='flex flex-col gap-1.6 mt-2 pt-2 border-t border-white/10'>
+                  <span className="text-gray-400 text-[11px] uppercase tracking-wide">Visual Export (As Is)</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleVisualExportWorkspace('pdf')}
+                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                      PDF
+                    </button>
+                    <button
+                      onClick={() => handleVisualExportWorkspace('html')}
+                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                      HTML
+                    </button>
+                  </div>
+                  <span className="text-gray-500 text-[10px]">Export masonry layout</span>
+                </div>
+              </div>
+
+              <div className="bg-white/10 rounded-2xl p-4 flex flex-col gap-3 mb-2">
+                <span className="font-bold text-sm text-white">Export Citations</span>
+                <span className="text-gray-300 text-[13px]">
+                  Turn tabs into APA, IEEE, or BibTeX references.
+                </span>
                 <button
-                  onClick={handleMarkdownExportWorkspace}
-                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                  This workspace
-                </button>
-                <button
-                  onClick={handleMarkdownExportAll}
-                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                  All workspaces
+                  onClick={() => setIsCitationPanelOpen(true)}
+                  className="bg-[#FF6314] hover:bg-[#ff742d] text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                  Open citation panel
                 </button>
               </div>
-            </div>
 
-            <div className='flex flex-col gap-1.6'>
-              <span className="text-gray-400 text-[11px] uppercase tracking-wide">PDF</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={handlePDFExportWorkspace}
-                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                  This workspace
-                </button>
-                <button
-                  onClick={handlePDFExportAll}
-                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                  All workspaces
-                </button>
+              <div className="bg-white/10 rounded-2xl p-4 flex flex-col gap-3 mb-2">
+                <span className="font-bold text-sm text-white">Export Research Trail</span>
+                <span className="text-gray-300 text-[13px]">
+                  Save the full nested tab tree as Markdown.
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleTrailExportWorkspace}
+                    className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                    This workspace
+                  </button>
+                  <button
+                    onClick={handleTrailExportAll}
+                    className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                    All workspaces
+                  </button>
+                </div>
               </div>
-              <span className="text-gray-500 text-[10px]">Save notes to PDF</span>
-            </div>
-          </div>
-
-          {/* export moodboard -> MD and PDF */}
-          <div className="bg-white/10 rounded-2xl p-4 flex flex-col gap-3 mb-2">
-            <span className="font-bold text-sm text-white">Export Moodboard</span>
-
-            <div className='flex flex-col gap-1.5'>
-              <span className="text-gray-300 text-[13px]">Save moodboard items to Markdown</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleMoodboardExportWorkspace}
-                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                  This workspace
-                </button>
-                <button
-                  onClick={handleMoodboardExportAll}
-                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                  All workspaces
-                </button>
-              </div>
-            </div>
-
-            <div className='flex flex-col gap-1.6'>
-              <span className="text-gray-400 text-[11px] uppercase tracking-wide">PDF</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleMoodboardPDFWorkspace}
-                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                  This workspace
-                </button>
-                <button
-                  onClick={handleMoodboardPDFAll}
-                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                  All workspaces
-                </button>
-              </div>
-              <span className="text-gray-500 text-[10px]">Save moodboard to PDF</span>
-            </div>
-
-            <div className='flex flex-col gap-1.6 mt-2 pt-2 border-t border-white/10'>
-              <span className="text-gray-400 text-[11px] uppercase tracking-wide">Visual Export (As Is)</span>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleVisualExportWorkspace('pdf')}
-                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                  PDF
-                </button>
-                <button
-                  onClick={() => handleVisualExportWorkspace('html')}
-                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                  HTML
-                </button>
-              </div>
-              <span className="text-gray-500 text-[10px]">Export masonry layout</span>
-            </div>
-          </div>
-
-          <div className="bg-white/10 rounded-2xl p-4 flex flex-col gap-3 mb-2">
-            <span className="font-bold text-sm text-white">Export Citations</span>
-            <span className="text-gray-300 text-[13px]">
-              Turn tabs into APA, IEEE, or BibTeX references.
-            </span>
-            <button
-              onClick={() => setIsCitationPanelOpen(true)}
-              className="bg-[#FF6314] hover:bg-[#ff742d] text-white font-bold py-2 rounded-xl text-xs transition-colors">
-              Open citation panel
-            </button>
-          </div>
-
-          <div className="bg-white/10 rounded-2xl p-4 flex flex-col gap-3 mb-2">
-            <span className="font-bold text-sm text-white">Export Research Trail</span>
-            <span className="text-gray-300 text-[13px]">
-              Save the full nested tab tree as Markdown — a trace of how this session unfolded.
-            </span>
-            <div className="flex gap-2">
-              <button
-                onClick={handleTrailExportWorkspace}
-                className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                This workspace
-              </button>
-              <button
-                onClick={handleTrailExportAll}
-                className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                All workspaces
-              </button>
-            </div>
-          </div>
             </>
           )}
 

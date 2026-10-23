@@ -73,7 +73,7 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false, isChainCont
 
   const hasChildren = node.childrenIDs && node.childrenIDs.length > 0;
   const isChainFoldCandidate = !isChainContinuation && chainLen > CHAIN_THRESHOLD;
-  const isExpanded = expandedNodes[nodeID] ?? !isChainFoldCandidate;
+  const isExpanded = expandedNodes[nodeID] ?? (isChainFoldCandidate ? false : true);
   const isFoldedChain = isChainFoldCandidate && !isExpanded;
 
   const displayNode = isFoldedChain ? getChainDisplayNode(nodeID, useTreeStore.getState().nodes, lastActiveTabID) ?? node : node;

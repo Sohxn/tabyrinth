@@ -145,21 +145,38 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
         }
     },
 
+    // syncFromStorage: (schema) => {
+    //     set((state) => {
+    //         const nextExpanded = { ...state.expandedNodeIDs };
+    //         Object.values(schema.nodes || {}).forEach((node) => {
+    //             const isChainFoldCandidate = getChainLengthFrom(node.id, schema.nodes) > CHAIN_FOLD_THRESHOLD;
+    //             if (node.childrenIDs.length > 0 && nextExpanded[node.id] === undefined && !isChainFoldCandidate) {
+    //                 nextExpanded[node.id] = true;
+    //             }
+    //         });
+
+    //         return {
+    //             nodes: schema.nodes,
+    //             rootIDs: schema.rootIDs,
+    //             lastActiveTabID: schema.lastActiveTabID,
+    //             expandedNodeIDs: nextExpanded,
+    //             activeMediaTabID: schema.activeMediaTabID ?? null,
+    //             workspaces: schema.workspaces && schema.workspaces.length > 0 ? schema.workspaces : state.workspaces,
+    //             activeWorkspaceID: schema.activeWorkspaceID || state.activeWorkspaceID,
+    //             groups: schema.groups || {},
+    //             moodboardItems: schema.moodboardItems || {},
+    //             moodboardVisible: schema.moodboardVisible || false,
+    //             hotTabs: schema.hotTabs || {}
+    //         }
+    //     })
+    // },
+
     syncFromStorage: (schema) => {
         set((state) => {
-            const nextExpanded = { ...state.expandedNodeIDs };
-            Object.values(schema.nodes || {}).forEach((node) => {
-                const isChainFoldCandidate = getChainLengthFrom(node.id, schema.nodes) > CHAIN_FOLD_THRESHOLD;
-                if (node.childrenIDs.length > 0 && nextExpanded[node.id] === undefined && !isChainFoldCandidate) {
-                    nextExpanded[node.id] = true;
-                }
-            });
-
             return {
                 nodes: schema.nodes,
                 rootIDs: schema.rootIDs,
                 lastActiveTabID: schema.lastActiveTabID,
-                expandedNodeIDs: nextExpanded,
                 activeMediaTabID: schema.activeMediaTabID ?? null,
                 workspaces: schema.workspaces && schema.workspaces.length > 0 ? schema.workspaces : state.workspaces,
                 activeWorkspaceID: schema.activeWorkspaceID || state.activeWorkspaceID,
@@ -167,8 +184,8 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
                 moodboardItems: schema.moodboardItems || {},
                 moodboardVisible: schema.moodboardVisible || false,
                 hotTabs: schema.hotTabs || {}
-            }
-        })
+            };
+        });
     },
 
     toggleExpand: (nodeID) => {
