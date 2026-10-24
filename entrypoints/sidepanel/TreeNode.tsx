@@ -1,12 +1,12 @@
 import React, { useState, type SyntheticEvent, useRef, useEffect } from 'react';
 import { useTreeStore } from '../../src/store/useTreeStore';
 import { StorageService } from '@/src/services/storage';
-import { isProActive } from '@/src/services/sync';
 import { createPortal } from 'react-dom';
 import { sanitizeHTML } from '@/src/utils/sanitizeHTML';
 import { type TabNode } from '@/src/types';
 import { PencilSimpleIcon, CaretCircleRightIcon, CodeBlockIcon } from '@phosphor-icons/react'; // Assuming CodeBlockIcon exists or can be replaced
 import { smartTextToHTML, escapeHTML } from '@/src/utils/noteText';
+import { activateNode } from '@/src/utils/activateNode';
 
 interface TreeNodeProps {
   nodeID: string | number;
@@ -98,24 +98,7 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false, isChainCont
 
   const handleTabClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const target = isFoldedChain ? displayNode : node;
-
-    if (target.isRemote && !(await isProActive())) return;
-
-    if (target.isClosed) {
-      await chrome.runtime.sendMessage({ type: 'reopen-node', nodeID: target.id });
-      return;
-    }
-
-    try {
-      await chrome.tabs.update(Number(target.id), { active: true });
-      await chrome.windows.update(target.windowID, { focused: true });
-    } catch {
-      // No live tab exists locally for this node — it most likely arrived via
-      // sync from another device whose session ended with this tab open.
-      // Treat it as a reopen request.
-      await chrome.runtime.sendMessage({ type: 'reopen-node', nodeID: target.id });
-    }
+    await activateNode(isFoldedChain ? displayNode : node);
   };
 
   const handleManualNoteToTab = async (e: SyntheticEvent) => {
@@ -239,7 +222,7 @@ export function TreeNode({ nodeID, depth, isResettingGhosts = false, isChainCont
       className={`relative flex-col
     transition-all duration-300 ease-in-out transform
     ${isSlidingOut ? 'translate-x-full opacity-0 pointer-events-none' : 'translate-x-0 opacity-100'}`}>
-      {depth > 0 && (
+      {depth > 0 && hasChildren && (
         <div
           className="absolute top-1 bottom-14 border-l border-8 border-[#333333] bg-black rounded-2xl"
           style={{

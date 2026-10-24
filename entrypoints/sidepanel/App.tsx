@@ -24,6 +24,7 @@ import { createCheckoutSession, activateLicenseKey, isProActive } from '@/src/se
 import { GhostGroup } from './GhostGroup';
 import { CloudGroup } from './CloudGroup';
 import { CitationExportPanel } from './CitationExportPanel';
+import { SearchResults } from './SearchResults';
 
 
 export default function App() {
@@ -43,6 +44,10 @@ export default function App() {
   const [statusMessage, setStatusMessage] = useState<{ text: string; isError: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
   const [isKeyVisible, setIsKeyVisible] = useState(false);
+  const [searchDraft, setSearchDraft] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const setSearchQuery = useTreeStore((s) => s.setSearchQuery);
 
   // workspace related 
   const regularRootIDs = getRegularRootIDs(activeWorkspaceID);
@@ -69,6 +74,70 @@ export default function App() {
   const handleOpenSettings = () => {
     setIsSettingsOpen(!isSettingsOpen);
   }
+
+  useEffect(() => {
+    const timer = setTimeout(() => setSearchQuery(searchDraft), 150);
+    return () => clearTimeout(timer);
+  }, [searchDraft, setSearchQuery]);
+
+  useEffect(() => {
+    if (!isSearchOpen) return;
+
+    // Use a slightly longer delay to ensure the browser's window-focus shift
+    // from sidePanel.open() has completed before we try to focus the input.
+    const timer = setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [isSearchOpen]);
+
+  useEffect(() => {
+    const focusSearch = () => {
+      setIsSearchOpen(true);
+    };
+
+    const consumeFocusRequest = () => {
+      void chrome.storage.local.remove('focusSearchRequested');
+      focusSearch();
+    };
+
+    const handleMessage = (message: { type?: string }) => {
+      if (message.type !== 'focus-search') return;
+
+      consumeFocusRequest();
+    };
+
+    const handleStorageChange = (
+      changes: { [key: string]: chrome.storage.StorageChange },
+      areaName: string
+    ) => {
+      if (areaName !== 'local' || changes.focusSearchRequested?.newValue !== true) return;
+
+      consumeFocusRequest();
+    };
+
+    chrome.runtime.onMessage.addListener(handleMessage);
+    chrome.storage.onChanged.addListener(handleStorageChange);
+
+    void chrome.storage.local.get('focusSearchRequested').then((result) => {
+      if (!result.focusSearchRequested) return;
+
+      consumeFocusRequest();
+    });
+
+    return () => {
+      chrome.runtime.onMessage.removeListener(handleMessage);
+      chrome.storage.onChanged.removeListener(handleStorageChange);
+    };
+  }, []);
+
+  const closeSearch = () => {
+    setSearchDraft('');
+    setSearchQuery('');
+    setIsSearchOpen(false);
+    searchInputRef.current?.blur();
+  };
 
   // Reads the persisted licence rather than the React flag, so a bypassed
   // UI that calls a Pro handler directly still gets rejected. Returns true
@@ -369,7 +438,7 @@ export default function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen w-full bg-[#21252b] text-[#e3e1e5] p-2 text-xs select-none overflow-hidden">
+    <div className="relative flex flex-col h-screen w-full bg-[#21252b] text-[#e3e1e5] p-2 text-xs select-none overflow-hidden">
 
       {/* header */}
       <div className="flex items-center justify-between gap-2 px-2 h-16 min-w-0">
@@ -465,16 +534,29 @@ export default function App() {
       </div>
 
       {/* footer */}
-      <div className={`shrink-0 bottom-3 left-3 right-3 grid ${isPro ? 'grid-cols-7' : 'grid-cols-6'} gap-4 items-center justify-center bg-transparent`}>
-        {/* search bar */}
-        <div className='rounded-full h-10 my-2 py-2 justify-center items-center grid grid-cols-4 col-span-4
-        bg-[#21252b] shadow-[inset_9px_9px_18px_#121418,inset_-9px_-9px_18px_#30363e]'>
-          <div className='col-span-1 ml-4'><MagnifyingGlassIcon size={24} /></div>
-          <div className='flex col-span-3 justify-center'></div>
+      <div className={`relative z-40 shrink-0 grid ${isPro ? 'grid-cols-7' : 'grid-cols-6'} gap-4 items-center justify-center bg-transparent`}>
+        <div className="col-span-4 mt-2 rounded-full p-px
+        bg-[linear-gradient(30deg,rgba(255,255,255,0.28)_0%,rgba(255,255,255,0.04)_35%,rgba(255,255,255,0.04)_65%,rgba(255,255,255,0.2)_100%)]">
+          <div className="flex items-center gap-2 px-4 h-11 rounded-full font-bold
+          bg-[#1b1e23] shadow-[inset_0_0_12px_rgba(255,255,255,0.03)]">
+            <MagnifyingGlassIcon size={20} className="shrink-0 text-gray-200" />
+            <input
+              ref={searchInputRef}
+              autoFocus
+              value={searchDraft}
+              onChange={(e) => setSearchDraft(e.target.value)}
+              onFocus={() => setIsSearchOpen(true)}
+              placeholder="Search Tabs"
+              spellCheck={false}
+              className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder-gray-500 outline-none select-text" />
+            {isSearchOpen && (
+              <button onClick={closeSearch} aria-label="Close search" className="shrink-0 text-sm font-bold text-gray-400 hover:text-white">✕</button>
+            )}
+          </div>
         </div>
 
         {/* clear tree button */}
-        <button onClick={resetTree} className='flex h-10 rounded-2xl bg-black border-2 border-gray-700 hover:bg-gray-200 hover:text-black
+        <button onClick={resetTree} className='flex mt-2 h-11 rounded-2xl hover:bg-gray-200 bg-black hover:text-black
         transition-all ease-in-out duration-300 justify-center items-center'>
           <ArrowClockwiseIcon size={20} />
         </button>
@@ -487,11 +569,13 @@ export default function App() {
         )}
 
         {/* settings button */}
-        <button onClick={handleOpenSettings} className='flex h-10 rounded-2xl bg-black border-2 border-gray-700 hover:bg-gray-200 hover:text-black
+        <button onClick={handleOpenSettings} className='flex mt-2 h-11 rounded-2xl bg-black hover:bg-gray-200 hover:text-black
         transition-all ease-in-out duration-300 justify-center items-center'>
           <SlidersHorizontalIcon size={20} weight="fill" />
         </button>
       </div>
+
+      {isSearchOpen && <SearchResults onClose={closeSearch} />}
 
 
       {/* HOT TABS STARTER VIEW */}

@@ -27,6 +27,12 @@ export default defineConfig({
         },
         "description": "Open Tabyrinth Sidebar"
       },
+      "focus-search": {
+        "suggested_key": {
+          "default": "Ctrl+Shift+F"
+        },
+        "description": "Focus Tabyrinth Search"
+      },
     },
     side_panel: {
       default_path: 'sidepanel.html'

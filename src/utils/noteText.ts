@@ -1,6 +1,13 @@
 // Utility to escape HTML special characters
 export const escapeHTML = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+/** Strips note HTML down to whitespace-normalised plain text. */
+export function htmlToPlainText(html: string): string {
+    if (!html) return '';
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return (doc.body.textContent ?? '').replace(/\s+/g, ' ').trim();
+}
+
 /**
  * Heuristic to detect if a block of text looks like source code.
  */

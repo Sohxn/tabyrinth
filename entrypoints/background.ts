@@ -170,12 +170,28 @@ export default defineBackground(() => {
     reconcileMediaState();
   });
 
+  // listeners for keybinds
   chrome.commands.onCommand.addListener((command, tab) => {
     if (command === "open-tabyrinth") {
       if (tab?.windowId === undefined) return;
       chrome.sidePanel.open({
         windowId: tab.windowId
       }).catch(console.error);
+      return;
+    }
+
+    if (command === "focus-search") {
+      if (tab?.windowId === undefined) return;
+
+      // Re-triggering open() may shift the browser's focus context to the side panel,
+      // providing the "activation" needed for the input to accept programmatic focus.
+      chrome.sidePanel.open({
+        windowId: tab.windowId
+      }).then(() => {
+        chrome.storage.local.set({ focusSearchRequested: true });
+        chrome.runtime.sendMessage({ type: "focus-search" });
+      }).catch(console.error);
+
       return;
     }
   });

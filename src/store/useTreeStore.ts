@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { StorageService } from '../services/storage';
 import { isProActive } from '../services/sync';
 import { REMOTE_WORKSPACE_ID, type TabNode, type TreeStorageSchema, type Workspace, type TabGroup, type MoodboardItem, type MoodboardUnit, type HotTabSet } from '../types';
+import { type SearchMode, type SearchScope } from '../utils/searchNodes';
 
 export const CHAIN_FOLD_THRESHOLD = 4;
 
@@ -37,6 +38,9 @@ interface TreeStoreState {
     expandedNodeIDs: Record<string | number, boolean>;
     expandedStackIDs: Record<string | number, boolean>;
     searchQuery: string;
+    searchMode: SearchMode;
+    searchScope: SearchScope;
+    searchIncludeClosed: boolean;
 
     // moodboarding and ideation
     moodboardItems: Record<string, MoodboardItem>;
@@ -59,6 +63,9 @@ interface TreeStoreState {
     toggleExpand: (nodeID: string | number) => void;
     toggleStackExpand: (nodeID: string | number) => void;
     setSearchQuery: (query: string) => void;
+    setSearchMode: (mode: SearchMode) => void;
+    setSearchScope: (scope: SearchScope) => void;
+    setSearchIncludeClosed: (include: boolean) => void;
     focusTab: (tabID: string | number) => Promise<void>;
     closeTab: (tabID: string | number) => Promise<void>;
     setActiveMediaTabID: (nodeID: string | number | null) => void;
@@ -101,6 +108,9 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
     expandedNodeIDs: {},
     expandedStackIDs: {},
     searchQuery: '',
+    searchMode: 'all',
+    searchScope: 'workspace',
+    searchIncludeClosed: true,
     activeMediaTabID: null,
     moodboardItems: {},
     moodboardVisible: false,
@@ -211,6 +221,9 @@ export const useTreeStore = create<TreeStoreState>()((set, get) => ({
             searchQuery: query
         })
     },
+    setSearchMode: (mode) => set({ searchMode: mode }),
+    setSearchScope: (scope) => set({ searchScope: scope }),
+    setSearchIncludeClosed: (include) => set({ searchIncludeClosed: include }),
 
     // switch tabs according to where the user clicks on the sidepanel
     focusTab: async (tabID) => {
