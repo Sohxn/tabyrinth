@@ -542,7 +542,6 @@ export default function App() {
             <MagnifyingGlassIcon size={20} className="shrink-0 text-gray-200" />
             <input
               ref={searchInputRef}
-              autoFocus
               value={searchDraft}
               onChange={(e) => setSearchDraft(e.target.value)}
               onFocus={() => setIsSearchOpen(true)}

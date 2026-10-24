@@ -23,23 +23,25 @@ export function Board() {
     const containerRef = useRef<HTMLDivElement>(null);
     const [containerWidth, setContainerWidth] = useState(0);
 
+    const units = getMoodboardUnits(activeWorkspaceID);
+    const itemCount = units.length;
+    const hasItems = itemCount > 0;
+
     useEffect(() => {
-        if (!containerRef.current) return;
+        const element = containerRef.current;
+        if (!element) return;
         const observer = new ResizeObserver((entries) => {
             for (const entry of entries) setContainerWidth(entry.contentRect.width);
         });
-        observer.observe(containerRef.current);
+        observer.observe(element);
         return () => observer.disconnect();
-    }, []);
+    }, [hasItems]);
 
     const availableWidth = containerWidth - LAYOUT_CONSTANTS.PADDING - (colCount - 1) * LAYOUT_CONSTANTS.GAP;
     const colWidth =
         availableWidth > 0
             ? Math.min(availableWidth / colCount, LAYOUT_CONSTANTS.MAX_COL_WIDTH)
             : 0;
-
-    const units = getMoodboardUnits(activeWorkspaceID)
-    const itemCount = units.length;
 
     const cols = colWidth > 0
         ? packUnits(units, colWidth, colCount)
@@ -124,7 +126,7 @@ export function Board() {
             </div>
 
             {/* masonry canvas */}
-            {itemCount > 1 ?
+            {hasItems ?
                 <div
                     ref={containerRef}
                     onDragOver={(e) => e.preventDefault()}
