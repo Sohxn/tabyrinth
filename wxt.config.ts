@@ -15,6 +15,7 @@ export default defineConfig({
       'contextMenus',
       'idle',
       'downloads',
+      'clipboardWrite',
       'scripting',
       'activeTab',
       'favicon'

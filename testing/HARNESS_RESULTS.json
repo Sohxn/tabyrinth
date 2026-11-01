@@ -1,0 +1,151 @@
+{
+  "generatedAt": "2026-10-29T07:53:43.896Z",
+  "checks": [
+    {
+      "name": "Extension loads in Chromium",
+      "status": "PASS",
+      "detail": "Loaded unpacked extension fecmejbmajhejngcflnhooanjceahpja"
+    },
+    {
+      "name": "Initial side-panel UI",
+      "status": "PASS",
+      "detail": "Rendered expected controls: true; body text length 92"
+    },
+    {
+      "name": "New tab action",
+      "status": "PASS",
+      "detail": "Browser page count changed from 2 to 3"
+    },
+    {
+      "name": "Search input",
+      "status": "PASS",
+      "detail": "Search query is accepted and retained"
+    },
+    {
+      "name": "Settings panel",
+      "status": "PASS",
+      "detail": "Settings view text detected: true"
+    },
+    {
+      "name": "Plus license activation",
+      "status": "PASS",
+      "detail": "Activation persisted in temporary extension storage"
+    },
+    {
+      "name": "Plus state survives panel reload",
+      "status": "PASS",
+      "detail": "Reloaded side panel without losing the persisted subscription state"
+    },
+    {
+      "name": "Workspace creation",
+      "status": "PASS",
+      "detail": "Created and switched to a workspace through the UI"
+    },
+    {
+      "name": "Workspace switching and isolation",
+      "status": "PASS",
+      "detail": "Beta workspace shows beta tabs and hides default tabs"
+    },
+    {
+      "name": "Workspace note rendering",
+      "status": "PASS",
+      "detail": "Captured screenshot of the beta workspace note surface"
+    },
+    {
+      "name": "Cross-workspace note separation",
+      "status": "PASS",
+      "detail": "Notes remain associated with their respective workspace tabs"
+    },
+    {
+      "name": "Moodboard toggle",
+      "status": "PASS",
+      "detail": "Moodboard board expanded in the side-panel layout"
+    },
+    {
+      "name": "Moodboard seeded image and text",
+      "status": "PASS",
+      "detail": "Moodboard rendered seeded note content and captured a screenshot"
+    },
+    {
+      "name": "Notes Markdown: workspace",
+      "status": "PASS",
+      "detail": "Downloaded tabyrinth-notes-untitled-1793260356009.md"
+    },
+    {
+      "name": "Notes Markdown: all workspaces",
+      "status": "PASS",
+      "detail": "Downloaded tabyrinth-notes-all-1793260356110.md"
+    },
+    {
+      "name": "Notes PDF: workspace",
+      "status": "PASS",
+      "detail": "PDF export opened a printable browser tab"
+    },
+    {
+      "name": "Notes PDF: all workspaces",
+      "status": "PASS",
+      "detail": "PDF export opened a printable browser tab"
+    },
+    {
+      "name": "Moodboard Markdown: workspace",
+      "status": "PASS",
+      "detail": "Downloaded tabyrinth-moodboard-untitled-1793260359727.md"
+    },
+    {
+      "name": "Moodboard Markdown: all workspaces",
+      "status": "PASS",
+      "detail": "Downloaded tabyrinth-moodboard-all-1793260359824.md"
+    },
+    {
+      "name": "Moodboard PDF: workspace",
+      "status": "PASS",
+      "detail": "PDF export opened a printable browser tab"
+    },
+    {
+      "name": "Moodboard PDF: all workspaces",
+      "status": "PASS",
+      "detail": "PDF export opened a printable browser tab"
+    },
+    {
+      "name": "Visual moodboard PDF",
+      "status": "PASS",
+      "detail": "PDF export opened a printable browser tab"
+    },
+    {
+      "name": "Visual moodboard HTML",
+      "status": "PASS",
+      "detail": "Downloaded tabyrinth-visual-moodboard-untitled-1793260364616.html"
+    },
+    {
+      "name": "Research trail: workspace",
+      "status": "PASS",
+      "detail": "Downloaded tabyrinth-trail-untitled-1793260364722.md"
+    },
+    {
+      "name": "Research trail: all workspaces",
+      "status": "PASS",
+      "detail": "Downloaded tabyrinth-trail-all-1793260366790.md"
+    },
+    {
+      "name": "Cross-browser session sync",
+      "status": "PASS",
+      "detail": "Profile B received profile A tabs"
+    },
+    {
+      "name": "Cross-browser reverse sync",
+      "status": "FAIL",
+      "detail": "Profile A did not receive the Profile B change"
+    },
+    {
+      "name": "Extension storage available",
+      "status": "PASS",
+      "detail": "Read 6 storage keys"
+    },
+    {
+      "name": "Runtime errors",
+      "status": "PASS",
+      "detail": "No console/page errors during the harness flow"
+    }
+  ],
+  "note": "License values are intentionally omitted."
+}

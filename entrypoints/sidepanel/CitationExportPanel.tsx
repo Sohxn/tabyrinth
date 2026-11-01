@@ -49,10 +49,14 @@ export function CitationExportPanel({ onClose }: Props) {
         await navigator.clipboard.writeText(formatBibtex(selected.map(({ source }) => source)));
       } else {
         const { html, text } = formatSources(selected.map(({ source }) => source), style);
-        await navigator.clipboard.write([new ClipboardItem({
-          "text/html": new Blob([html], { type: "text/html" }),
-          "text/plain": new Blob([text], { type: "text/plain" }),
-        })]);
+        try {
+          await navigator.clipboard.write([new ClipboardItem({
+            "text/html": new Blob([html], { type: "text/html" }),
+            "text/plain": new Blob([text], { type: "text/plain" }),
+          })]);
+        } catch {
+          await navigator.clipboard.writeText(text);
+        }
       }
       setStatus({ text: `Copied ${selected.length} references`, isError: false });
     } catch (error) {
@@ -62,6 +66,11 @@ export function CitationExportPanel({ onClose }: Props) {
   };
 
   const downloadBib = () => {
+    if (!selected.length) {
+      setStatus({ text: "No sources selected", isError: true });
+      return;
+    }
+
     const url = URL.createObjectURL(new Blob(
       [formatBibtex(selected.map(({ source }) => source))],
       { type: "text/plain" }

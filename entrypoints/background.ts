@@ -4,7 +4,6 @@ import { type TabNode } from "@/src/types";
 import { getAccentColorFromURL } from "@/src/utils/mediaColors";
 import { validatePersistedLicense, initializeSync, setupSyncListeners, isProActive } from "@/src/services/sync";
 import { smartTextToHTML } from '@/src/utils/noteText'
-import { sanitizeHTML } from "@/src/utils/sanitizeHTML";
 import { captureSourceInPage } from "@/src/utils/citationCapture";
 import { generateCiteKey } from "@/src/utils/citeKey";
 
@@ -101,6 +100,35 @@ async function reconcileMediaState() {
   }
 }
 
+async function ensureContextMenus(): Promise<void> {
+  await chrome.contextMenus.removeAll();
+
+  const menus: chrome.contextMenus.CreateProperties[] = [
+    {
+      id: "add-note-to-tab",
+      title: "Add note to tab",
+      contexts: ["selection", "page"],
+    },
+    {
+      id: "pin-image-to-board",
+      title: "Pin image to board",
+      contexts: ["image"],
+    },
+    {
+      id: "pin-selection-to-board",
+      title: "Pin selection to board",
+      contexts: ["selection"],
+    },
+    {
+      id: "capture-citation",
+      title: "Capture citation metadata",
+      contexts: ["page"],
+    },
+  ];
+
+  await Promise.all(menus.map((menu) => chrome.contextMenus.create(menu)));
+}
+
 export default defineBackground(() => {
 
   // boot extension on every wake-up to ensure listeners are active
@@ -138,36 +166,14 @@ export default defineBackground(() => {
   chrome.runtime.onInstalled.addListener(async () => {
     await syncExistingTabs();
     await bootExtension();
-
-    chrome.contextMenus.create({
-      id: "add-note-to-tab",
-      title: "Add note to tab",
-      contexts: ["selection", "page"]
-    });
-
-    chrome.contextMenus.create({
-      id: "pin-image-to-board",
-      title: "Pin image to board",
-      contexts: ["image"]
-    });
-
-    chrome.contextMenus.create({
-      id: "pin-selection-to-board",
-      title: "Pin selection to board",
-      contexts: ["selection"]
-    });
-
-    chrome.contextMenus.create({
-      id: "capture-citation",
-      title: "Capture citation metadata",
-      contexts: ["page"]
-    });
+    await ensureContextMenus();
   });
 
   chrome.runtime.onStartup.addListener(async () => {
     await syncExistingTabs();
     await bootExtension();
-    reconcileMediaState();
+    await reconcileMediaState();
+    await ensureContextMenus();
   });
 
   // listeners for keybinds
@@ -197,7 +203,7 @@ export default defineBackground(() => {
   });
 
   chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-    if (info.menuItemId === "add-note-to-tab" && tab?.id) {
+    if (info.menuItemId === "add-note-to-tab" && tab?.id !== undefined) {
       try {
         const injectionResults = await chrome.scripting.executeScript({
           target: { tabId: tab.id },
@@ -206,8 +212,35 @@ export default defineBackground(() => {
             if (!selection || selection.rangeCount === 0) return "";
             const container = document.createElement("div");
             container.appendChild(selection.getRangeAt(0).cloneContents());
-            container.querySelectorAll('a').forEach(a => a.href = a.href);
-            return container.innerHTML;
+
+            const allowedTags = new Set([
+              "P", "BR", "B", "STRONG", "I", "EM", "CODE", "PRE",
+              "UL", "OL", "LI", "SUP", "A",
+            ]);
+            const clean = (node: Node): Node[] => {
+              if (node.nodeType === Node.TEXT_NODE) return [node.cloneNode()];
+              if (node.nodeType !== Node.ELEMENT_NODE) return [];
+
+              const element = node as HTMLElement;
+              if (["SCRIPT", "STYLE", "IMG", "IFRAME", "OBJECT", "EMBED"].includes(element.tagName)) {
+                return [];
+              }
+
+              const children = Array.from(element.childNodes).flatMap(clean);
+              if (!allowedTags.has(element.tagName)) return children;
+
+              const output = document.createElement(element.tagName.toLowerCase());
+              if (element.tagName === "A") {
+                const href = element.getAttribute("href");
+                if (href && /^(https?:|\/)/i.test(href)) output.setAttribute("href", href);
+              }
+              children.forEach((child) => output.appendChild(child));
+              return [output];
+            };
+
+            return Array.from(container.childNodes).flatMap(clean)
+              .map((node) => (node as HTMLElement).outerHTML || node.textContent || "")
+              .join("");
           }
         });
 
@@ -215,7 +248,7 @@ export default defineBackground(() => {
 
         if (rawHTML.trim().length > 0) {
           const htmlToSave = rawHTML.includes('<') ? rawHTML : smartTextToHTML(rawHTML);
-          await StorageService.addNoteToTab(tab.id, htmlToSave, info.pageUrl);
+          await StorageService.addNoteToTab(tab.id, htmlToSave, info.pageUrl || tab.url);
         }
       } catch (err) {
         console.error('[ERROR] Failed to capture selection: ', err);
@@ -268,7 +301,7 @@ export default defineBackground(() => {
       }
     }
 
-    if (info.menuItemId === "capture-citation" && tab?.id) {
+    if (info.menuItemId === "capture-citation" && tab?.id !== undefined) {
       if (!(await isProActive())) return;
       try {
         const injectionResults = await chrome.scripting.executeScript({
