@@ -26,6 +26,33 @@ import { CloudGroup } from './CloudGroup';
 import { CitationExportPanel } from './CitationExportPanel';
 import { SearchResults } from './SearchResults';
 
+type ExportToggleProps = {
+  options: readonly { value: string; label: string }[];
+  value: string;
+  onChange: (value: string) => void;
+  ariaLabel: string;
+};
+
+function ExportToggle({ options, value, onChange, ariaLabel }: ExportToggleProps) {
+  return (
+    <div
+      aria-label={ariaLabel}
+      className="flex h-10 min-w-0 gap-3 rounded-full"
+      role="group"
+    >
+      {options.map((option) => (
+        <button
+          key={option.value}
+          onClick={() => onChange(option.value)}
+          className="w-wrap flex-1 rounded-full px-3 py-2 text-xs font-medium leading-tight text-[#d9c8bb] border border-[#8d8377] hover:border hover:border-[#8d8377]/90 hover:bg-[#FF5A00] hover:text-[#f2d9c8]"
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 
 export default function App() {
   const { init, syncFromStorage, nodes,
@@ -46,6 +73,12 @@ export default function App() {
   const [isKeyVisible, setIsKeyVisible] = useState(false);
   const [searchDraft, setSearchDraft] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [notesMarkdownScope, setNotesMarkdownScope] = useState<'workspace' | 'all'>('workspace');
+  const [notesPdfScope, setNotesPdfScope] = useState<'workspace' | 'all'>('workspace');
+  const [moodboardMarkdownScope, setMoodboardMarkdownScope] = useState<'workspace' | 'all'>('workspace');
+  const [moodboardPdfScope, setMoodboardPdfScope] = useState<'workspace' | 'all'>('workspace');
+  const [visualExportFormat, setVisualExportFormat] = useState<'pdf' | 'html'>('pdf');
+  const [trailExportScope, setTrailExportScope] = useState<'workspace' | 'all'>('workspace');
   const searchInputRef = useRef<HTMLInputElement>(null);
   const setSearchQuery = useTreeStore((s) => s.setSearchQuery);
 
@@ -534,10 +567,10 @@ export default function App() {
       </div>
 
       {/* footer */}
-      <div className={`relative z-40 shrink-0 grid ${isPro ? 'grid-cols-7' : 'grid-cols-6'} gap-4 items-center justify-center bg-transparent`}>
+      <div className={`relative z-40 shrink-0 grid ${isPro ? 'grid-cols-7' : 'grid-cols-6'} gap-2 items-center justify-center bg-transparent`}>
         <div className="col-span-4 mt-2 rounded-full p-px
         bg-[linear-gradient(30deg,rgba(255,255,255,0.28)_0%,rgba(255,255,255,0.04)_35%,rgba(255,255,255,0.04)_65%,rgba(255,255,255,0.2)_100%)]">
-          <div className="flex items-center gap-2 px-4 h-11 rounded-full font-bold
+          <div className="flex items-center gap-9 px-4 h-11 rounded-full font-bold
           bg-[#1b1e23] shadow-[inset_0_0_12px_rgba(255,255,255,0.03)]">
             <MagnifyingGlassIcon size={20} className="shrink-0 text-gray-200" />
             <input
@@ -555,20 +588,21 @@ export default function App() {
         </div>
 
         {/* clear tree button */}
-        <button onClick={resetTree} className='flex mt-2 h-11 rounded-2xl hover:bg-gray-200 bg-black hover:text-black
+        <button onClick={resetTree} className='flex mt-2 h-11 rounded-full hover:bg-gray-200 bg-black hover:text-black
         transition-all ease-in-out duration-300 justify-center items-center'>
           <ArrowClockwiseIcon size={20} />
         </button>
 
+        {/* hot tabs button */}
         {isPro && (
-          <button onClick={() => setIsStarterPaneOpen(true)} className='flex h-10 rounded-2xl bg-black border-2 border-gray-700 hover:bg-gray-200 hover:text-black
+          <button onClick={() => setIsStarterPaneOpen(true)} className='flex mt-2 h-11 rounded-full bg-black border-2 border-gray-700 hover:bg-gray-200 hover:text-black
           transition-all ease-in-out duration-300 justify-center items-center' title="Hot Tabs">
             <LightningIcon size={20} weight="fill" />
           </button>
         )}
 
         {/* settings button */}
-        <button onClick={handleOpenSettings} className='flex mt-2 h-11 rounded-2xl bg-black hover:bg-gray-200 hover:text-black
+        <button onClick={handleOpenSettings} className='flex mt-2 h-11 rounded-full bg-black hover:bg-gray-200 hover:text-black
         transition-all ease-in-out duration-300 justify-center items-center'>
           <SlidersHorizontalIcon size={20} weight="fill" />
         </button>
@@ -651,14 +685,18 @@ export default function App() {
 
       {/* settings element */}
       {isSettingsOpen && (
-        <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col p-4 overflow-y-auto">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold text-white">
-              Tabyrinth
-              <span className='text-md font-bold text-[#FF6314] text-center'> plus</span></h2>
+        <div className="absolute inset-0 z-50 flex flex-col overflow-y-auto bg-[#14100e]/95 p-3 backdrop-blur-md">
+          <div className="mb-4 flex items-start justify-between rounded-2xl border border-[#ff6314]/25 bg-gradient-to-br from-[#ff6314]/20 to-[#17100d] p-4">
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight text-[#fff1e8]">
+                Tabyrinth <span className="text-[#FF6314]">Plus</span>
+              </h2>
+              <p className="mt-1 max-w-[220px] text-xs leading-relaxed text-[#c7aaa0]">Export, sync, and manage your workspace.</p>
+            </div>
             <button
               onClick={() => { setIsSettingsOpen(false); setStatusMessage(null); }}
-              className="text-gray-400 hover:text-white text-base font-bold px-2">
+              aria-label="Close settings"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 bg-black/20 text-sm font-bold text-[#c7aaa0] transition-colors hover:border-[#ff6314]/60 hover:bg-[#ff6314]/15 hover:text-white">
               ✕
             </button>
           </div>
@@ -666,127 +704,140 @@ export default function App() {
           {isPro && (
             <>
               {/* export workspace -> MD and PDF */}
-              <div className="bg-white/10 rounded-2xl p-4 flex flex-col gap-3 mb-2">
-                <span className="font-bold text-sm text-white">Export Notes</span>
+              <div className="mb-4 flex flex-col gap-3 rounded-3xl border border-white/10 bg-white/10 p-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <span className="text-base font-bold tracking-tight text-[#fff1e8]">Export notes</span>
+                  </div>
+                  <span className="text-lg leading-none text-[#ff6314]">↗</span>
+                </div>
                 {/* separation */}
                 <div className='flex flex-col gap-1.5'>
-                  <span className="text-gray-300 text-[13px]">Save your tab notes to Markdown</span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleMarkdownExportWorkspace}
-                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                      This workspace
-                    </button>
-                    <button
-                      onClick={handleMarkdownExportAll}
-                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                      All workspaces
-                    </button>
-                  </div>
+                  <span className="text-md font-bold uppercase tracking-[0.14em] text-[#73827f]">Markdown</span>
+                  <ExportToggle
+                    ariaLabel="Markdown export scope"
+                    options={[
+                      { value: 'workspace', label: 'This workspace' },
+                      { value: 'all', label: 'All workspaces' },
+                    ]}
+                    value={notesMarkdownScope}
+                    onChange={(value) => {
+                      setNotesMarkdownScope(value as 'workspace' | 'all');
+                      if (value === 'workspace') void handleMarkdownExportWorkspace();
+                      else void handleMarkdownExportAll();
+                    }}
+                  />
                 </div>
 
-                <div className='flex flex-col gap-1.6'>
-                  <span className="text-gray-400 text-[11px] uppercase tracking-wide">PDF</span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handlePDFExportWorkspace}
-                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                      This workspace
-                    </button>
-                    <button
-                      onClick={handlePDFExportAll}
-                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                      All workspaces
-                    </button>
-                  </div>
-                  <span className="text-gray-500 text-[10px]">Save notes to PDF</span>
+                <div className='flex flex-col gap-1.5'>
+                  <span className="text-md font-bold uppercase tracking-[0.14em] text-[#73827f]">PDF</span>
+                  <ExportToggle
+                    ariaLabel="PDF export scope"
+                    options={[
+                      { value: 'workspace', label: 'This workspace' },
+                      { value: 'all', label: 'All workspaces' },
+                    ]}
+                    value={notesPdfScope}
+                    onChange={(value) => {
+                      setNotesPdfScope(value as 'workspace' | 'all');
+                      if (value === 'workspace') void handlePDFExportWorkspace();
+                      else void handlePDFExportAll();
+                    }}
+                  />
                 </div>
               </div>
 
               {/* export moodboard -> MD and PDF */}
-              <div className="bg-white/10 rounded-2xl p-4 flex flex-col gap-3 mb-2">
-                <span className="font-bold text-sm text-white">Export Moodboard</span>
+              <div className="mb-4 flex flex-col gap-3 rounded-3xl border border-white/10 bg-white/10 p-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <span className="text-base font-bold tracking-tight text-[#fff1e8]">Export moodboard</span>
+                  </div>
+                  <span className="text-lg leading-none text-[#ff6314]">↗</span>
+                </div>
 
                 <div className='flex flex-col gap-1.5'>
-                  <span className="text-gray-300 text-[13px]">Save moodboard items to Markdown</span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleMoodboardExportWorkspace}
-                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                      This workspace
-                    </button>
-                    <button
-                      onClick={handleMoodboardExportAll}
-                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                      All workspaces
-                    </button>
-                  </div>
+                  <span className="text-md font-bold uppercase tracking-[0.14em] text-[#73827f]">Markdown</span>
+                  <ExportToggle
+                    ariaLabel="Moodboard Markdown export scope"
+                    options={[
+                      { value: 'workspace', label: 'This workspace' },
+                      { value: 'all', label: 'All workspaces' },
+                    ]}
+                    value={moodboardMarkdownScope}
+                    onChange={(value) => {
+                      setMoodboardMarkdownScope(value as 'workspace' | 'all');
+                      if (value === 'workspace') void handleMoodboardExportWorkspace();
+                      else void handleMoodboardExportAll();
+                    }}
+                  />
                 </div>
 
-                <div className='flex flex-col gap-1.6'>
-                  <span className="text-gray-400 text-[11px] uppercase tracking-wide">PDF</span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleMoodboardPDFWorkspace}
-                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                      This workspace
-                    </button>
-                    <button
-                      onClick={handleMoodboardPDFAll}
-                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                      All workspaces
-                    </button>
-                  </div>
-                  <span className="text-gray-500 text-[10px]">Save moodboard to PDF</span>
+                <div className='flex flex-col gap-1.5'>
+                  <span className="text-md font-bold uppercase tracking-[0.14em] text-[#73827f]">PDF</span>
+                  <ExportToggle
+                    ariaLabel="Moodboard PDF export scope"
+                    options={[
+                      { value: 'workspace', label: 'This workspace' },
+                      { value: 'all', label: 'All workspaces' },
+                    ]}
+                    value={moodboardPdfScope}
+                    onChange={(value) => {
+                      setMoodboardPdfScope(value as 'workspace' | 'all');
+                      if (value === 'workspace') void handleMoodboardPDFWorkspace();
+                      else void handleMoodboardPDFAll();
+                    }}
+                  />
                 </div>
 
-                <div className='flex flex-col gap-1.6 mt-2 pt-2 border-t border-white/10'>
-                  <span className="text-gray-400 text-[11px] uppercase tracking-wide">Visual Export (As Is)</span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleVisualExportWorkspace('pdf')}
-                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                      PDF
-                    </button>
-                    <button
-                      onClick={() => handleVisualExportWorkspace('html')}
-                      className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                      HTML
-                    </button>
-                  </div>
-                  <span className="text-gray-500 text-[10px]">Export masonry layout</span>
+                <div className='mt-1 flex flex-col gap-1.5'>
+                  <span className="text-md font-bold uppercase tracking-[0.14em] text-[#73827f]">Visual export</span>
+                  <ExportToggle
+                    ariaLabel="Visual export format"
+                    options={[
+                      { value: 'pdf', label: 'PDF' },
+                      { value: 'html', label: 'HTML' },
+                    ]}
+                    value={visualExportFormat}
+                    onChange={(value) => {
+                      const format = value as 'pdf' | 'html';
+                      setVisualExportFormat(format);
+                      void handleVisualExportWorkspace(format);
+                    }}
+                  />
                 </div>
               </div>
 
-              <div className="bg-white/10 rounded-2xl p-4 flex flex-col gap-3 mb-2">
-                <span className="font-bold text-sm text-white">Export Citations</span>
-                <span className="text-gray-300 text-[13px]">
-                  Turn tabs into APA, IEEE, or BibTeX references.
-                </span>
+              <div className="mb-4 flex items-center justify-between gap-3 rounded-3xl border border-white/10 bg-white/10 p-3.5">
+                <div>
+                  <span className="text-base font-bold tracking-tight text-[#fff1e8]">Export citations</span>
+                  <p className="mt-1 text-xs text-[#8fa09e]">APA, IEEE, or BibTeX references.</p>
+                </div>
                 <button
                   onClick={() => setIsCitationPanelOpen(true)}
-                  className="bg-[#FF6314] hover:bg-[#ff742d] text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                  Open citation panel
+                  className="shrink-0 rounded-lg bg-[#FF6314] px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-[#ff742d]">
+                  Export ↗
                 </button>
               </div>
 
-              <div className="bg-white/10 rounded-2xl p-4 flex flex-col gap-3 mb-2">
-                <span className="font-bold text-sm text-white">Export Research Trail</span>
-                <span className="text-gray-300 text-[13px]">
-                  Save the full nested tab tree as Markdown.
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleTrailExportWorkspace}
-                    className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                    This workspace
-                  </button>
-                  <button
-                    onClick={handleTrailExportAll}
-                    className="flex-1 bg-white/10 hover:bg-white/20 text-white font-bold py-2 rounded-xl text-xs transition-colors">
-                    All workspaces
-                  </button>
+              <div className="mb-4 flex items-center justify-between gap-3 rounded-3xl border border-white/10 bg-white/10 p-3.5">
+                <div>
+                  <span className="text-base font-bold tracking-tight text-[#fff1e8]">Research trail</span>
                 </div>
+                <ExportToggle
+                  ariaLabel="Research trail export scope"
+                  options={[
+                    { value: 'workspace', label: 'Workspace' },
+                    { value: 'all', label: 'All' },
+                  ]}
+                  value={trailExportScope}
+                  onChange={(value) => {
+                    const scope = value as 'workspace' | 'all';
+                    setTrailExportScope(scope);
+                    if (scope === 'workspace') void handleTrailExportWorkspace();
+                    else void handleTrailExportAll();
+                  }}
+                />
               </div>
             </>
           )}
@@ -821,46 +872,55 @@ export default function App() {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-3">
               {/* Buy Pro Section */}
-              <div className="bg-white/15 rounded-2xl p-4 flex flex-col gap-2">
-                <span className="font-bold text-sm text-white">Upgrade to Tabyrinth Plus</span>
-                <span className="text-gray-300 text-[13px]">
-                  Get multi-device Cloud Sync with a <span className='text-[#FF6314]'>$10</span> Lifetime License.
-                </span>
+              <div className="relative overflow-hidden rounded-xl border border-[#ff6314]/40 bg-gradient-to-br from-[#ff6314]/20 via-[#071214] to-[#071214] p-4">
+                <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-[#ff6314]/10 blur-2xl" />
+                <div className="relative flex flex-col gap-3">
+                  <div>
+                    <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-[#ff8a52]">Unlock Plus</p>
+                    <span className="text-base font-bold tracking-tight text-[#fff1e8]">Sync everywhere you work.</span>
+                    <p className="mt-1 text-xs leading-relaxed text-[#c7aaa0]">
+                      Multi-device Cloud Sync with a <span className="font-bold text-[#ff8a52]">$10 lifetime license</span>.
+                    </p>
+                  </div>
 
-                <input
-                  type="email"
-                  placeholder="Enter activation email"
-                  value={activationMail}
-                  onChange={(e) => setActivationMail(e.target.value)}
-                  className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#FF6314]"
-                />
+                  <input
+                    type="email"
+                    placeholder="Email for your license"
+                    value={activationMail}
+                    onChange={(e) => setActivationMail(e.target.value)}
+                    className="rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-xs text-white outline-none transition-colors placeholder:text-gray-600 focus:border-[#FF6314]"
+                  />
 
-                <button
-                  onClick={handleBuyPro}
-                  disabled={loading}
-                  className="bg-[#FF6314] hover:bg-[#ff742d] disabled:opacity-50 text-white font-bold py-2 rounded-xl text-xs transition-colors"
-                >
-                  {loading ? 'Generating Link...' : 'Buy Lifetime Access ($10)'}
-                </button>
+                  <button
+                    onClick={handleBuyPro}
+                    disabled={loading}
+                    className="rounded-xl bg-[#FF6314] py-2.5 text-xs font-bold text-white transition-colors hover:bg-[#ff742d] disabled:opacity-50"
+                  >
+                    {loading ? 'Generating Link...' : 'Get lifetime access — $10'}
+                  </button>
+                </div>
               </div>
 
               {/* Activate Key Section */}
-              <div className="bg-white/15 rounded-2xl p-3.5 flex flex-col gap-2">
-                <span className="font-bold text-sm text-white">Already have a key?</span>
+              <div className="flex flex-col gap-3 rounded-xl border border-white/10 bg-[#071214] p-3.5">
+                <div>
+                  <span className="text-base font-bold tracking-tight text-[#fff1e8]">Already have a key?</span>
+                  <p className="mt-1 text-xs text-[#8fa09e]">Activate your Plus license on this device.</p>
+                </div>
                 <input
                   type="text"
                   placeholder="PRO-XXXX-XXXX-XXXX"
                   value={inputKey}
                   onChange={(e) => setInputKey(e.target.value)}
-                  className="bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#FF6314] font-mono"
+                  className="rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 font-mono text-xs text-white outline-none transition-colors placeholder:text-gray-600 focus:border-[#FF6314]"
                 />
 
                 <button
                   onClick={handleActivateKey}
                   disabled={loading}
-                  className="bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white font-bold py-2 rounded-xl text-xs transition-colors"
+                  className="rounded-lg border border-white/10 bg-white/[0.07] py-2.5 text-xs font-bold text-[#d9e1df] transition-colors hover:border-[#ff6314]/50 hover:bg-[#ff6314]/10 hover:text-white disabled:opacity-50"
                 >
                   {loading ? 'Verifying...' : 'Activate License'}
                 </button>
