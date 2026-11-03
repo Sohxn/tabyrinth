@@ -68,7 +68,7 @@ export function searchNodes(
     const results: SearchResult[] = [];
 
     for (const node of Object.values(nodes)) {
-        if (node.isHistoryNode || (!includeClosed && node.isClosed) || !isInScope(node, scope, workspaceID)) continue;
+        if ((!includeClosed && node.isClosed) || !isInScope(node, scope, workspaceID)) continue;
 
         const title = (node.title || '').toLowerCase();
         const url = (node.url || '').toLowerCase();
