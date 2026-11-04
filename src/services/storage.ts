@@ -297,7 +297,9 @@ export const StorageService = {
       const openTabs = await chrome.tabs.query({});
       const data = await chrome.storage.local.get("tabTreeData");
       const state = (data.tabTreeData as TreeStorageSchema) || InitState;
-      const freshNodes: Record<string | number, TabNode> = {};
+      const freshNodes: Record<string | number, TabNode> = Object.fromEntries(
+        Object.entries(state.nodes).filter(([, node]) => node.isRemote)
+      );
       const assignedWorkspace = state.activeWorkspaceID || 'workspace-default';
 
       for (const tab of openTabs) {
