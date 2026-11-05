@@ -1,8 +1,8 @@
 import { StorageService } from "./storage";
 import { type SyncPayload, type TabNode, type TreeStorageSchema } from "../types";
-import { URLs } from "../requestURLs/urls";
+import { WORKER_URL } from "../requestURLs/urls";
 
-const WURL = URLs['prod'];
+const WURL = WORKER_URL;
 
 const DEBOUNCE_DELAY = 20000; // 20s batching window
 const MAX_WAIT_DELAY = 300000; // 5m max wait
